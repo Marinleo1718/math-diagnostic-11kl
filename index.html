@@ -182,8 +182,11 @@
     /* ========================================================= */
     #pdf-export-container {
       position: absolute;
-      left: -9999px;
       top: 0;
+      left: 0;
+      z-index: -9999;
+      opacity: 0;
+      pointer-events: none;
       width: 794px !important;
       -webkit-text-size-adjust: 100% !important;
       text-size-adjust: 100% !important;
@@ -206,7 +209,7 @@
       border-radius: 0 !important;
       position: relative !important;
       overflow: hidden !important;
-      font-size: 16px !important; /* Фиксированный базовый шрифт */
+      font-size: 16px !important;
     }
 
     /* Единый темно-синий блок шапки на 1 странице */
@@ -751,7 +754,6 @@
     }
 
     const feedEl = document.getElementById(`feed_${qId}`);
-    const btnEl = document.getElementById(`btn_${qId}`);
 
     if (userAns === "") {
       feedEl.innerHTML = "<span style='color: #dc2626'>Ответ не введен!</span>";
@@ -764,22 +766,12 @@
     if (isRight) {
       feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
       qDef.isCorrect = true;
-      btnEl.style.display = "none";
-      if (qDef.type === "radio") {
-        const els = document.getElementsByName(qId);
-        for (let el of els) { el.disabled = true; }
-      } else {
-        document.getElementById(qId).disabled = true;
-      }
     } else {
-      feedEl.innerHTML = "<span style='color: #b45309'>Неверно ⚠️ (попробуйте еще раз)</span>";
+      feedEl.innerHTML = "<span style='color: #dc2626'>Неверно ❌</span>";
       qDef.isCorrect = false;
     }
   }
 
-  // =========================================================================
-  // ПОСТРАНИЧНОЕ ФОРМИРОВАНИЕ ОТЧЕТА (HTML2CANVAS + JSPDF)
-  // =========================================================================
   async function checkAll() {
     const downloadBtn = document.getElementById("downloadPdfBtn");
     downloadBtn.disabled = true;
@@ -836,7 +828,7 @@
             </div>
           `;
 
-          // Карточка для фонового A4 PDF
+          // Карточка для скрытого A4 PDF
           pdfCardsArray.push(`
             <div class="pdf-card ${statusClass}">
               <div class="pdf-q">${qIndex}. ${qDef.q}</div>
@@ -856,7 +848,6 @@
         blockTotal += themeTotal;
       });
 
-      // Для экрана
       summaryListHtml += `
         <div class="screen-summary-block">
           <h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>
@@ -864,7 +855,6 @@
         </div>
       `;
 
-      // Для PDF
       pdfSummaryBlocksHtml += `
         <div class="pdf-block-item">
           <div class="pdf-block-title-text">${block.block} (${blockCorrect} из ${blockTotal})</div>
@@ -878,7 +868,6 @@
 
     const percent = Math.round((totalCorrect / totalQuestions) * 100);
 
-    // 1. Формируем интерфейс для экрана ученика
     const screenResultHtml = `
       <div class="screen-header-card">
         <h2>Отчет по тестированию</h2>
@@ -893,12 +882,10 @@
 
     document.getElementById("result-screen").innerHTML = screenResultHtml;
 
-    // 2. Ровно 11 заданий на страницу для детального отчета PDF
     const pageSize = 11;
     const totalDetailPages = Math.ceil(pdfCardsArray.length / pageSize);
     const totalPages = 1 + totalDetailPages;
 
-    // Страница 1 PDF
     let pagesHtml = `
       <div class="pdf-page">
         <div class="pdf-main-header">
@@ -921,7 +908,6 @@
       </div>
     `;
 
-    // Страницы 2..N (По 11 заданий)
     for (let p = 0; p < totalDetailPages; p++) {
       const pageNum = p + 2;
       const startIndex = p * pageSize;
@@ -941,27 +927,27 @@
     const resultPdfContainer = document.getElementById("result-pdf");
     resultPdfContainer.innerHTML = pagesHtml;
 
-    // Переключение экранов
     document.getElementById("main-container").style.display = "none";
     document.getElementById("result-wrapper").style.display = "block";
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Рендеринг формул MathJax в обоих контейнерах
     await safeTypeset(document.getElementById("result-screen"));
     await safeTypeset(resultPdfContainer);
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Создаем единый идеальный PDF Blob через html2canvas + jsPDF
-    generatedPdfBlob = await buildPerfectPdfBlob();
+    try {
+      generatedPdfBlob = await buildPerfectPdfBlob();
+    } catch (err) {
+      console.error("Ошибка при генерации PDF:", err);
+    }
 
     downloadBtn.disabled = false;
     downloadBtn.innerText = "📄 Скачать PDF-отчет";
 
-    // Автоматическая отправка PDF и фото в Telegram
+    // Отправляем данные в Telegram
     await sendToTelegram(studentData.fullName, totalCorrect, totalQuestions, generatedPdfBlob);
   }
 
-  // --- СБОРКА ИДЕАЛЬНОГО PDF ИЗ КАЖДОЙ A4-СТРАНИЦЫ ---
   async function buildPerfectPdfBlob() {
     const pdfPages = document.querySelectorAll('#result-pdf .pdf-page');
     const { jsPDF } = window.jspdf;
@@ -974,14 +960,15 @@
     for (let i = 0; i < pdfPages.length; i++) {
       const pageEl = pdfPages[i];
       
-      // ЖЕСТКАЯ ФИКСАЦИЯ ШИРИНЫ 794px ДЛЯ МОБИЛЬНЫХ БРАУЗЕРОВ
       const canvas = await html2canvas(pageEl, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         width: 794,
-        windowWidth: 794
+        windowWidth: 794,
+        x: 0,
+        y: 0
       });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -996,17 +983,11 @@
     return pdf.output('blob');
   }
 
-  // --- СКАЧИВАНИЕ ГОТОВОГО PDF УЧЕНИКОМ ---
-  async function downloadPDF() {
+  function downloadPDF() {
     if (!generatedPdfBlob) {
-      const downloadBtn = document.getElementById("downloadPdfBtn");
-      downloadBtn.disabled = true;
-      downloadBtn.innerText = "⏳ Формирование PDF...";
-      generatedPdfBlob = await buildPerfectPdfBlob();
-      downloadBtn.disabled = false;
-      downloadBtn.innerText = "📄 Скачать PDF-отчет";
+      alert("PDF еще не сформирован. Пожалуйста, подождите.");
+      return;
     }
-
     const url = URL.createObjectURL(generatedPdfBlob);
     const a = document.createElement('a');
     a.href = url;
@@ -1017,23 +998,29 @@
     URL.revokeObjectURL(url);
   }
 
-  // --- ОТПРАВКА СФОРМИРОВАННОГО PDF И ЧЕРНОВИКОВ В TELEGRAM ---
   async function sendToTelegram(fullName, correct, total, pdfBlob) {
     if (BOT_TOKEN === 'ВАШ_ТОКЕН_БОТА' || !BOT_TOKEN) return;
 
     try {
-      // 1. Отправляем готовый PDF Документ
-      const pdfData = new FormData();
-      pdfData.append('chat_id', CHAT_ID);
-      pdfData.append('caption', `📊 Результат теста: ${fullName}\nНабрано баллов: ${correct} из ${total}`);
-      pdfData.append('document', pdfBlob, `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`);
+      // 1. Отправка PDF отчета
+      if (pdfBlob) {
+        const pdfData = new FormData();
+        pdfData.append('chat_id', CHAT_ID);
+        pdfData.append('caption', `📊 Результат теста: ${fullName}\nНабрано баллов: ${correct} из ${total}`);
+        pdfData.append('document', pdfBlob, `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`);
 
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-        method: 'POST',
-        body: pdfData
-      });
+        const resPdf = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+          method: 'POST',
+          body: pdfData
+        });
+        const resPdfJson = await resPdf.json();
 
-      // 2. Отправляем фото письменных решений
+        if (!resPdfJson.ok) {
+          console.error("Telegram API Error (PDF):", resPdfJson.description);
+        }
+      }
+
+      // 2. Отправка фотографий решений
       if (uploadedPhotos && uploadedPhotos.length > 0) {
         if (uploadedPhotos.length === 1) {
           const singleData = new FormData();
@@ -1053,17 +1040,11 @@
           uploadedPhotos.forEach((file, i) => {
             const attachName = `photo_${i}`;
             mediaGroupData.append(attachName, file);
-
-            const mediaItem = {
+            mediaArray.push({
               type: 'photo',
-              media: `attach://${attachName}`
-            };
-
-            if (i === 0) {
-              mediaItem.caption = `📷 Черновики решения: ${fullName} (${uploadedPhotos.length} фото)`;
-            }
-
-            mediaArray.push(mediaItem);
+              media: `attach://${attachName}`,
+              caption: i === 0 ? `📷 Черновики решения: ${fullName} (${uploadedPhotos.length} фото)` : ''
+            });
           });
 
           mediaGroupData.append('media', JSON.stringify(mediaArray));
@@ -1076,12 +1057,12 @@
       }
       clearStorage();
     } catch(e) {
-      console.error("Ошибка отправки в Telegram:", e);
+      console.error("Ошибка при отправке в Telegram:", e);
     }
   }
 
-  window.addEventListener('DOMContentLoaded', restoreStateFromStorage);
+  // Восстановление состояния при загрузке страницы
+  document.addEventListener('DOMContentLoaded', restoreStateFromStorage);
 </script>
-
 </body>
 </html>
