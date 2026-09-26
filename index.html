@@ -181,7 +181,7 @@
     /* 2. СКРЫТЫЙ СТРОГИЙ A4-МАКЕТ (ИЗОЛИРОВАН ОТ МОБИЛЬНЫХ СТИЛЕЙ) */
     /* ========================================================= */
     #pdf-export-container {
-      position: fixed; /* Фиксированное позиционирование предотвращает растягивание высоты страницы */
+      position: fixed;
       top: 0;
       left: 0;
       z-index: -9999;
@@ -192,7 +192,6 @@
       text-size-adjust: 100% !important;
     }
 
-    /* БЛОКИРОВКА ДУБЛИРОВАНИЯ ТЕКСТА ИЗ MATHJAX НА МОБИЛЬНЫХ */
     #pdf-export-container mjx-assistive-mml,
     #pdf-export-container .mjx-assistive-mml {
       display: none !important;
@@ -212,7 +211,6 @@
       font-size: 16px !important;
     }
 
-    /* Единый темно-синий блок шапки на 1 странице */
     .pdf-main-header {
       background: #1b365d;
       color: #ffffff;
@@ -227,7 +225,6 @@
     .pdf-main-header h3 { margin: 0 0 6px 0; color: #60a5fa; font-size: 1.05em; font-weight: 700; }
     .pdf-main-header p.desc { margin: 0; line-height: 1.35; color: #e2e8f0; font-size: 0.82em; }
 
-    /* Зеленая плашка общего результата */
     .pdf-total-result {
       text-align: center;
       color: #16a34a;
@@ -238,7 +235,6 @@
       margin-bottom: 12px;
     }
 
-    /* Чистый текстовый формат блоков на 1 странице */
     .pdf-block-item {
       margin-bottom: 8px;
     }
@@ -261,7 +257,6 @@
 
     .detail-section-title { margin-top: 0; margin-bottom: 10px; color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 5px; font-size: 1.05em; }
 
-    /* Компактные карточки */
     .pdf-card {
       background: #ffffff;
       border-left: 4px solid #cbd5e1;
@@ -340,7 +335,7 @@
       
       <input type="file" id="solutionPhotosInput" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload(event)">
       <button type="button" class="btn-photo-upload" onclick="document.getElementById('solutionPhotosInput').click()">
-        ➕ Прикрепить фото или файлы решений
+        ➕ Прикрепить решения
       </button>
 
       <div class="photo-preview-grid" id="photoPreviewGrid"></div>
@@ -495,7 +490,6 @@
     });
   }
 
-  // Обработка загрузки фото с сжатием
   async function handlePhotoUpload(event) {
     const files = Array.from(event.target.files);
     for (const file of files) {
@@ -755,7 +749,8 @@
             });
             html += `</div>`;
           } else {
-            html += `<input type="text" class="text-input" id="${qId}" placeholder="Введите ответ" oninput="saveStateToStorage()">`;
+            // inputmode="decimal" вызывает цифровую панель с запятой на мобильных
+            html += `<input type="text" inputmode="decimal" class="text-input" id="${qId}" placeholder="Введите ответ" oninput="saveStateToStorage()">`;
           }
 
           html += `<div style="margin-top:12px;">`;
@@ -807,7 +802,6 @@
     }
   }
 
-  // Генерация файла Blob для кнопки скачивания и отправки в ТГ
   async function buildPerfectPdfBlob() {
     const { jsPDF } = window.jspdf;
     const pdfContainer = document.getElementById("result-pdf");
@@ -849,7 +843,6 @@
     URL.revokeObjectURL(url);
   }
 
-  // Завершение теста и генерация результатов
   async function checkAll() {
     const downloadBtn = document.getElementById("downloadPdfBtn");
     downloadBtn.disabled = true;
@@ -958,9 +951,8 @@
 
     document.getElementById("result-screen").innerHTML = screenResultHtml;
 
-    // РАЗБИЕНИЕ ЗАДАНИЙ: 15 на 1-й детальной странице, 14 на 2-й, 13 на 3-й
     const pageSizes = [15, 14, 13];
-    const totalPages = 1 + pageSizes.length; // 1 сводная + 3 детальные = 4 страницы
+    const totalPages = 1 + pageSizes.length;
 
     let pagesHtml = `
       <div class="pdf-page">
@@ -1004,37 +996,24 @@
     const resultPdfContainer = document.getElementById("result-pdf");
     resultPdfContainer.innerHTML = pagesHtml;
 
-    // Переключение видимости экранов
     document.getElementById("main-container").style.display = "none";
     document.getElementById("result-wrapper").style.display = "block";
 
-    // МГНОВЕННЫЙ СКРОЛЛ НАВЕРХ (без торможений на мобильных)
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
 
-    // Даем мобильному браузеру кадр на мгновенную отрисовку верхушки экрана
     await new Promise(resolve => setTimeout(resolve, 50));
-
-    // 1. Сначала компилируем формулы экранного интерфейса ученика
     await safeTypeset(document.getElementById("result-screen"));
-
-    // Небольшая асинхронная пауза для идеальной плавности
     await new Promise(resolve => setTimeout(resolve, 100));
-
-    // 2. Затем фоново обрабатываем формулы в скрытом PDF
     await safeTypeset(resultPdfContainer);
     await new Promise(resolve => setTimeout(resolve, 150));
 
     try {
-      // 3. Формируем единый Blob-файл отчета
       generatedPdfBlob = await buildPerfectPdfBlob();
-
-      // 4. Активируем кнопку для ученика
       downloadBtn.disabled = false;
       downloadBtn.innerText = "📄 Скачать PDF-отчет";
 
-      // 5. Автоматически отправляем сформированный PDF и сжатые фото в Telegram
       sendToTelegram(studentData.fullName, totalCorrect, totalQuestions, generatedPdfBlob);
 
     } catch (err) {
@@ -1043,12 +1022,10 @@
     }
   }
 
-  // Автоматическая отправка в Telegram
   async function sendToTelegram(fullName, correct, total, pdfBlob) {
     if (!BOT_TOKEN || BOT_TOKEN === 'ВАШ_ТОКЕН_БОТА') return;
 
     try {
-      // 1. Отправляем PDF
       if (pdfBlob) {
         const pdfData = new FormData();
         pdfData.append('chat_id', CHAT_ID);
@@ -1061,7 +1038,6 @@
         });
       }
 
-      // 2. Отправляем сжатые фото черновиков
       if (uploadedPhotos && uploadedPhotos.length > 0) {
         if (uploadedPhotos.length === 1) {
           const singleData = new FormData();
@@ -1102,7 +1078,6 @@
     }
   }
 
-  // Восстановление состояния при загрузке страницы
   window.addEventListener('DOMContentLoaded', restoreStateFromStorage);
 </script>
 </body>
