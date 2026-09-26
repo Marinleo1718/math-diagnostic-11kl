@@ -14,10 +14,9 @@
   </script>
   <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   
-  <!-- Библиотеки генерации PDF -->
+  <!-- Библиотеки генерации PDF из canvas (html2canvas + jsPDF) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
@@ -123,7 +122,7 @@
     .btn-pdf:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.8; }
 
     mjx-container[jax="SVG"] { display: inline-block !important; margin: 0 2px !important; }
-    mjx-container[jax="SVG"] svg { overflow: visible !important; }
+    mjx-container[jax="SVG"] svg { overflow: visible !important; vertical-align: middle !important; }
 
     /* ========================================================= */
     /* 1. ЭКРАННЫЙ ИНТЕРФЕЙС ОТОБРАЖЕНИЯ РЕЗУЛЬТАТОВ (ДЛЯ УЧЕНИКА) */
@@ -153,9 +152,9 @@
 
     .screen-section-title { color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 8px; font-size: 1.2em; margin: 25px 0 15px 0; }
     
-    .screen-summary-block { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 12px; }
-    .screen-summary-block h4 { margin: 0 0 8px 0; color: var(--primary-dark); font-size: 1em; }
-    .screen-summary-block ul { margin: 0; padding-left: 20px; font-size: 0.92em; color: #475569; }
+    .screen-summary-block { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; }
+    .screen-summary-block h4 { margin: 0 0 6px 0; color: var(--primary-dark); font-size: 0.98em; }
+    .screen-summary-block ul { margin: 0; padding-left: 18px; font-size: 0.9em; color: #475569; }
 
     .screen-card {
       background: #ffffff;
@@ -174,63 +173,100 @@
     .screen-ans { font-size: 0.9em; color: #475569; line-height: 1.5; margin-bottom: 8px; }
 
     /* ========================================================= */
-    /* 2. СКРЫТЫЙ СТРОГИЙ A4-МАКЕТ (ТОЛЬКО ДЛЯ СКАЧИВАНИЯ/TELEGRAM) */
+    /* 2. СКРЫТЫЙ СТРОГИЙ A4-МАКЕТ (ДЛЯ HTML2CANVAS + JSPDF)     */
     /* ========================================================= */
     #pdf-export-container {
       position: absolute;
       left: -9999px;
       top: 0;
-      width: 794px; /* Фиксированная ширина A4 */
-      background: #f4f6f9;
+      width: 794px;
     }
 
     .pdf-page {
       width: 794px;
-      min-height: 1122px;
+      height: 1122px;
       background: #ffffff;
-      padding: 35px 40px;
+      padding: 25px 35px;
       box-sizing: border-box;
       margin: 0 auto 30px auto;
       border-radius: 0;
       position: relative;
+      overflow: hidden;
     }
 
-    .pdf-header {
-      background: var(--primary-dark);
+    /* Единый темно-синий блок шапки на 1 странице */
+    .pdf-main-header {
+      background: #1b365d;
       color: #ffffff;
-      padding: 18px 22px;
+      padding: 16px 20px;
       border-radius: 8px;
-      margin-bottom: 20px;
       text-align: center;
+      margin-bottom: 15px;
+    }
+    .pdf-main-header h2 { margin: 0 0 6px 0; font-size: 1.25em; color: #ffffff; font-weight: 700; }
+    .pdf-main-header .student-subtitle { margin: 0 0 12px 0; color: #93c5fd; font-size: 0.95em; }
+    .pdf-main-header hr { border: none; border-top: 1px solid rgba(255,255,255,0.18); margin: 10px 0; }
+    .pdf-main-header h3 { margin: 0 0 6px 0; color: #60a5fa; font-size: 1.05em; font-weight: 700; }
+    .pdf-main-header p.desc { margin: 0; line-height: 1.35; color: #e2e8f0; font-size: 0.82em; }
+
+    /* Зеленая плашка общего результата */
+    .pdf-total-result {
+      text-align: center;
+      color: #16a34a;
+      font-size: 1.2em;
+      font-weight: 700;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #22c55e;
+      margin-bottom: 12px;
     }
 
-    .pdf-report-block { margin-bottom: 10px; }
-    .pdf-report-block h4 { margin: 3px 0 4px 0; color: var(--primary-dark); font-size: 0.98em; }
-    .pdf-report-block ul { margin: 0; padding-left: 18px; font-size: 0.88em; }
+    /* Чистый текстовый формат блоков на 1 странице */
+    .pdf-block-item {
+      margin-bottom: 8px;
+    }
+    .pdf-block-title-text {
+      font-weight: 700;
+      color: #1b365d;
+      font-size: 0.88em;
+      margin-bottom: 2px;
+    }
+    .pdf-block-ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 0.8em;
+      line-height: 1.3;
+      color: #334155;
+    }
+    .pdf-block-ul li {
+      margin-bottom: 1px;
+    }
 
+    .detail-section-title { margin-top: 0; margin-bottom: 10px; color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 5px; font-size: 1.05em; }
+
+    /* Компактные карточки для идеального помещения 11 штук на страницу */
     .pdf-card {
       background: #ffffff;
       border-left: 4px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 10px 12px 12px 12px;
-      margin-bottom: 14px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      border-radius: 5px;
+      padding: 5px 8px;
+      margin-bottom: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
       position: relative;
     }
     .pdf-card.correct { border-left-color: #16a34a; background: #f0fdf4; }
     .pdf-card.incorrect { border-left-color: #d97706; background: #fffbeb; }
     .pdf-card.skipped { border-left-color: #dc2626; background: #fef2f2; }
 
-    .pdf-q { font-weight: 600; margin-bottom: 6px; color: #1e293b; font-size: 0.9em; line-height: 1.6; }
-    .pdf-ans { font-size: 0.86em; color: #475569; line-height: 1.4; padding-right: 110px; }
+    .pdf-q { font-weight: 600; margin-bottom: 2px; color: #1e293b; font-size: 0.82em; line-height: 1.25; }
+    .pdf-ans { font-size: 0.78em; color: #475569; line-height: 1.28; padding-right: 85px; }
     
     .badge {
       position: absolute;
-      bottom: 10px;
-      right: 12px;
-      padding: 3px 8px;
+      bottom: 5px;
+      right: 8px;
+      padding: 2px 5px;
       border-radius: 4px;
-      font-size: 0.78em;
+      font-size: 0.7em;
       font-weight: bold;
       white-space: nowrap;
     }
@@ -238,17 +274,16 @@
     .badge-err { background: #fef3c7; color: #b45309; }
     .badge-skip { background: #fee2e2; color: #b91c1c; }
 
-    .pdf-footer {
+    .page-footer {
+      position: absolute;
+      bottom: 12px;
+      left: 35px;
+      right: 35px;
       text-align: center;
-      font-size: 0.8em;
+      font-size: 0.75em;
       color: #94a3b8;
       border-top: 1px solid #e2e8f0;
-      padding-top: 8px;
-      margin-top: 20px;
-      position: absolute;
-      bottom: 20px;
-      left: 40px;
-      right: 40px;
+      padding-top: 5px;
     }
 
     @media screen and (max-width: 820px) {
@@ -300,12 +335,12 @@
 <!-- 1. РЕЗУЛЬТАТЫ НА ЭКРАНЕ (ДЛЯ УЧЕНИКА) -->
 <div id="result-wrapper">
   <div style="text-align: right; margin-bottom: 15px;">
-    <button id="downloadPdfBtn" class="btn-pdf" onclick="downloadPDF()">📥 Скачать PDF-отчет</button>
+    <button id="downloadPdfBtn" class="btn-pdf" disabled onclick="downloadPDF()">⏳ Формирование PDF...</button>
   </div>
   <div id="result-screen"></div>
 </div>
 
-<!-- 2. СКРЫТЫЙ БЛОК ДЛЯ ГЕНЕРАЦИИ СТРОГОГО A4 PDF -->
+<!-- 2. СКРЫТЫЙ СТРОГИЙ БЛОК A4 ДЛЯ СКАЧИВАНИЯ И TELEGRAM -->
 <div id="pdf-export-container">
   <div id="result-pdf"></div>
 </div>
@@ -317,6 +352,7 @@
 
   let studentData = { firstName: "", lastName: "", fullName: "" };
   let uploadedPhotos = [];
+  let generatedPdfBlob = null;
 
   function escapeHtml(text) {
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -727,13 +763,18 @@
   }
 
   // =========================================================================
-  // ОСНОВНАЯ ЛОГИКА: ПАРАЛЛЕЛЬНАЯ ГЕНЕРАЦИЯ (1: ДЛЯ ЭКРАНА, 2: ДЛЯ PDF)
+  // ПОСТРАНИЧНОЕ ФОРМИРОВАНИЕ ОТЧЕТА (HTML2CANVAS + JSPDF)
   // =========================================================================
   async function checkAll() {
+    const downloadBtn = document.getElementById("downloadPdfBtn");
+    downloadBtn.disabled = true;
+    downloadBtn.innerText = "⏳ Формирование PDF...";
+
     let totalCorrect = 0;
     let totalQuestions = 0;
     
     let summaryListHtml = "";
+    let pdfSummaryBlocksHtml = "";
     let screenCardsHtml = "";
     let pdfCardsArray = [];
     
@@ -768,7 +809,7 @@
             badgeClass = "badge-skip";
           }
 
-          // Карточка для экрана ученика
+          // Карточка для экрана ученика (мобильная лента)
           screenCardsHtml += `
             <div class="screen-card ${statusClass}">
               <div class="screen-q">${qIndex}. ${qDef.q}</div>
@@ -780,7 +821,7 @@
             </div>
           `;
 
-          // Карточка для фонового PDF файла (А4)
+          // Карточка для фонового A4 PDF
           pdfCardsArray.push(`
             <div class="pdf-card ${statusClass}">
               <div class="pdf-q">${qIndex}. ${qDef.q}</div>
@@ -800,10 +841,19 @@
         blockTotal += themeTotal;
       });
 
+      // Для экрана
       summaryListHtml += `
         <div class="screen-summary-block">
           <h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>
           <ul>${themesHtml}</ul>
+        </div>
+      `;
+
+      // Для PDF (компактный текст в 1 колонку как на скриншоте)
+      pdfSummaryBlocksHtml += `
+        <div class="pdf-block-item">
+          <div class="pdf-block-title-text">${block.block} (${blockCorrect} из ${blockTotal})</div>
+          <ul class="pdf-block-ul">${themesHtml}</ul>
         </div>
       `;
 
@@ -813,9 +863,7 @@
 
     const percent = Math.round((totalCorrect / totalQuestions) * 100);
 
-    // -------------------------------------------------------------
-    // 1. ФОРМИРУЕМ ИНТЕРФЕЙС ДЛЯ ЭКРАНА УЧЕНИКА (УДОБНО НА ТЕЛЕФОНЕ)
-    // -------------------------------------------------------------
+    // 1. Формируем интерфейс для экрана ученика
     const screenResultHtml = `
       <div class="screen-header-card">
         <h2>Отчет по тестированию</h2>
@@ -830,108 +878,133 @@
 
     document.getElementById("result-screen").innerHTML = screenResultHtml;
 
-    // -------------------------------------------------------------
-    // 2. ФОРМИРУЕМ СКРЫТЫЙ МАКЕТ A4 ДЛЯ PDF
-    // -------------------------------------------------------------
-    const pdfCombinedHeader = `
-      <div class="pdf-header">
-        <h2 style="margin: 0 0 4px 0; font-size: 1.3em; color: #ffffff;">Отчет по диагностическому тестированию (11 класс)</h2>
-        <p style="margin: 0 0 10px 0; color: #93c5fd; font-size: 0.95em;">Ученик: <b>${escapeHtml(studentData.fullName)}</b></p>
-        <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 10px;">
-          <h3 style="margin: 0; color: #60a5fa; font-size: 1.15em;">Итоговый результат: ${totalCorrect} из ${totalQuestions} (${percent}%)</h3>
-        </div>
-      </div>
-    `;
+    // 2. Ровно 11 заданий на страницу для детального отчета PDF
+    const pageSize = 11;
+    const totalDetailPages = Math.ceil(pdfCardsArray.length / pageSize);
+    const totalPages = 1 + totalDetailPages;
 
-    const pdfPage1 = `
+    // Страница 1 PDF (Чистый дизайн как на скриншоте)
+    let pagesHtml = `
       <div class="pdf-page">
-        ${pdfCombinedHeader}
-        <h3 class="screen-section-title" style="margin-top:0;">Сводка по блокам знаний</h3>
-        ${summaryListHtml}
-        <div class="pdf-footer">Страница 1</div>
+        <div class="pdf-main-header">
+          <h2>Отчет по диагностическому тестированию (11 класс)</h2>
+          <div class="student-subtitle">Ученик: <b>${escapeHtml(studentData.fullName)}</b></div>
+          <hr>
+          <h3>Благодарим за прохождение диагностики!</h3>
+          <p class="desc">Результаты этого тестирования помогут выявить сильные стороны и составить индивидуальный план повторения всех ключевых тем 1–10 классов для успешной подготовки к ЕГЭ.</p>
+        </div>
+
+        <div class="pdf-total-result">
+          Общий результат: ${totalCorrect} из ${totalQuestions}
+        </div>
+
+        <div>
+          ${pdfSummaryBlocksHtml}
+        </div>
+
+        <div class="page-footer">Диагностический отчет | Страница 1 из ${totalPages}</div>
       </div>
     `;
 
-    let pdfPagesHtml = pdfPage1;
-    let cardIdx = 0;
-    let pageNum = 2;
+    // Страницы 2..N (По 11 заданий на страницу)
+    for (let p = 0; p < totalDetailPages; p++) {
+      const pageNum = p + 2;
+      const startIndex = p * pageSize;
+      const pageCards = pdfCardsArray.slice(startIndex, startIndex + pageSize).join("");
+      const startQ = startIndex + 1;
+      const endQ = Math.min(startIndex + pageSize, pdfCardsArray.length);
 
-    while (cardIdx < pdfCardsArray.length) {
-      let pageCards = pdfCardsArray.slice(cardIdx, cardIdx + 7).join("");
-      pdfPagesHtml += `
+      pagesHtml += `
         <div class="pdf-page">
-          <h3 class="screen-section-title" style="margin-top:0;">Детализация ответов (продолжение)</h3>
+          <h3 class="detail-section-title">Результаты выполнения заданий (Задания ${startQ}–${endQ})</h3>
           ${pageCards}
-          <div class="pdf-footer">Страница ${pageNum}</div>
+          <div class="page-footer">Диагностический отчет | Страница ${pageNum} из ${totalPages}</div>
         </div>
       `;
-      cardIdx += 7;
-      pageNum++;
     }
 
-    const pdfDiv = document.getElementById("result-pdf");
-    pdfDiv.innerHTML = pdfPagesHtml;
+    const resultPdfContainer = document.getElementById("result-pdf");
+    resultPdfContainer.innerHTML = pagesHtml;
 
     // Переключение экранов
     document.getElementById("main-container").style.display = "none";
     document.getElementById("result-wrapper").style.display = "block";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Обработка формул MathJax в обоих контейнерах
+    // Рендеринг формул MathJax в обоих контейнерах
     await safeTypeset(document.getElementById("result-screen"));
-    await safeTypeset(pdfDiv);
+    await safeTypeset(resultPdfContainer);
+    await new Promise(resolve => setTimeout(resolve, 400));
 
-    // Автоматическая отправка идеального A4 PDF и фото в Telegram
-    sendToTelegram(studentData.fullName, totalCorrect, totalQuestions);
+    // Создаем единый идеальный PDF Blob через html2canvas + jsPDF
+    generatedPdfBlob = await buildPerfectPdfBlob();
+
+    downloadBtn.disabled = false;
+    downloadBtn.innerText = "📄 Скачать PDF-отчет";
+
+    // Автоматическая отправка PDF и фото в Telegram
+    await sendToTelegram(studentData.fullName, totalCorrect, totalQuestions, generatedPdfBlob);
   }
 
-  // --- СКАЧИВАНИЕ PDF УЧЕНИКОМ ИЗ СКРЫТОГО A4 БЛОКА ---
-  async function downloadPDF() {
-    const btn = document.getElementById("downloadPdfBtn");
-    btn.disabled = true;
-    btn.innerText = "⏳ Формирование PDF...";
+  // --- СБОРКА ИДЕАЛЬНОГО PDF ИЗ КАЖДОЙ A4-СТРАНИЦЫ ---
+  async function buildPerfectPdfBlob() {
+    const pdfPages = document.querySelectorAll('#result-pdf .pdf-page');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
 
-    const element = document.getElementById('result-pdf');
-    if (window.MathJax) await MathJax.typesetPromise([element]);
-
-    const opt = {
-      margin:       10,
-      filename:     `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    try {
-      await html2pdf().set(opt).from(element).save();
-    } catch(e) {
-      console.error(e);
-      alert("Ошибка при сохранении PDF");
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "📥 Скачать PDF-отчет";
+    for (let i = 0; i < pdfPages.length; i++) {
+      const pageEl = pdfPages[i];
+      
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      if (i > 0) {
+        pdf.addPage('a4', 'portrait');
+      }
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
     }
+
+    return pdf.output('blob');
   }
 
-  // --- ОТПРАВКА В TELEGRAM (СНИМОК С СКРЫТОГО A4 БЛОКА) ---
-  async function sendToTelegram(fullName, correct, total) {
+  // --- СКАЧИВАНИЕ ГОТОВОГО PDF УЧЕНИКОМ ---
+  async function downloadPDF() {
+    if (!generatedPdfBlob) {
+      const downloadBtn = document.getElementById("downloadPdfBtn");
+      downloadBtn.disabled = true;
+      downloadBtn.innerText = "⏳ Формирование PDF...";
+      generatedPdfBlob = await buildPerfectPdfBlob();
+      downloadBtn.disabled = false;
+      downloadBtn.innerText = "📄 Скачать PDF-отчет";
+    }
+
+    const url = URL.createObjectURL(generatedPdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // --- ОТПРАВКА СФОРМИРОВАННОГО PDF И ЧЕРНОВИКОВ В TELEGRAM ---
+  async function sendToTelegram(fullName, correct, total, pdfBlob) {
     if (BOT_TOKEN === 'ВАШ_ТОКЕН_БОТА' || !BOT_TOKEN) return;
 
     try {
-      const element = document.getElementById('result-pdf');
-      if (window.MathJax) await MathJax.typesetPromise([element]);
-
-      const opt = {
-        margin:       10,
-        filename:     `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      // 1. Создаем PDF из скрытого контейнера A4 (#result-pdf)
-      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-
-      // 2. Отправляем PDF Документ
+      // 1. Отправляем готовый PDF Документ
       const pdfData = new FormData();
       pdfData.append('chat_id', CHAT_ID);
       pdfData.append('caption', `📊 Результат теста: ${fullName}\nНабрано баллов: ${correct} из ${total}`);
@@ -942,7 +1015,7 @@
         body: pdfData
       });
 
-      // 3. Отправляем фото письменных решений АЛЬБОМОМ
+      // 2. Отправляем фото письменных решений
       if (uploadedPhotos && uploadedPhotos.length > 0) {
         if (uploadedPhotos.length === 1) {
           const singleData = new FormData();
@@ -993,4 +1066,4 @@
 </script>
 
 </body>
-</html>
+</html><script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
