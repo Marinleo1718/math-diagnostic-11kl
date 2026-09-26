@@ -9,7 +9,12 @@
   <script>
     window.MathJax = {
       tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
-      svg: { fontCache: 'local' }
+      svg: { fontCache: 'local' },
+      options: {
+        renderActions: {
+          addMenu: [] // Отключаем контекстное меню MathJax
+        }
+      }
     };
   </script>
   <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
@@ -173,25 +178,35 @@
     .screen-ans { font-size: 0.9em; color: #475569; line-height: 1.5; margin-bottom: 8px; }
 
     /* ========================================================= */
-    /* 2. СКРЫТЫЙ СТРОГИЙ A4-МАКЕТ (ДЛЯ HTML2CANVAS + JSPDF)     */
+    /* 2. СКРЫТЫЙ СТРОГИЙ A4-МАКЕТ (ИЗОЛИРОВАН ОТ МОБИЛЬНЫХ СТИЛЕЙ) */
     /* ========================================================= */
     #pdf-export-container {
       position: absolute;
       left: -9999px;
       top: 0;
-      width: 794px;
+      width: 794px !important;
+      -webkit-text-size-adjust: 100% !important;
+      text-size-adjust: 100% !important;
+    }
+
+    /* БЛОКИРОВКА ДУБЛИРОВАНИЯ ТЕКСТА ИЗ MATHJAX НА МОБИЛЬНЫХ */
+    #pdf-export-container mjx-assistive-mml,
+    #pdf-export-container .mjx-assistive-mml {
+      display: none !important;
+      visibility: hidden !important;
     }
 
     .pdf-page {
-      width: 794px;
-      height: 1122px;
-      background: #ffffff;
-      padding: 25px 35px;
-      box-sizing: border-box;
-      margin: 0 auto 30px auto;
-      border-radius: 0;
-      position: relative;
-      overflow: hidden;
+      width: 794px !important;
+      height: 1122px !important;
+      background: #ffffff !important;
+      padding: 25px 35px !important;
+      box-sizing: border-box !important;
+      margin: 0 auto !important;
+      border-radius: 0 !important;
+      position: relative !important;
+      overflow: hidden !important;
+      font-size: 16px !important; /* Фиксированный базовый шрифт */
     }
 
     /* Единый темно-синий блок шапки на 1 странице */
@@ -243,7 +258,7 @@
 
     .detail-section-title { margin-top: 0; margin-bottom: 10px; color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 5px; font-size: 1.05em; }
 
-    /* Компактные карточки для идеального помещения 11 штук на страницу */
+    /* Компактные карточки */
     .pdf-card {
       background: #ffffff;
       border-left: 4px solid #cbd5e1;
@@ -809,7 +824,7 @@
             badgeClass = "badge-skip";
           }
 
-          // Карточка для экрана ученика (мобильная лента)
+          // Карточка для экрана ученика
           screenCardsHtml += `
             <div class="screen-card ${statusClass}">
               <div class="screen-q">${qIndex}. ${qDef.q}</div>
@@ -849,7 +864,7 @@
         </div>
       `;
 
-      // Для PDF (компактный текст в 1 колонку как на скриншоте)
+      // Для PDF
       pdfSummaryBlocksHtml += `
         <div class="pdf-block-item">
           <div class="pdf-block-title-text">${block.block} (${blockCorrect} из ${blockTotal})</div>
@@ -883,7 +898,7 @@
     const totalDetailPages = Math.ceil(pdfCardsArray.length / pageSize);
     const totalPages = 1 + totalDetailPages;
 
-    // Страница 1 PDF (Чистый дизайн как на скриншоте)
+    // Страница 1 PDF
     let pagesHtml = `
       <div class="pdf-page">
         <div class="pdf-main-header">
@@ -906,7 +921,7 @@
       </div>
     `;
 
-    // Страницы 2..N (По 11 заданий на страницу)
+    // Страницы 2..N (По 11 заданий)
     for (let p = 0; p < totalDetailPages; p++) {
       const pageNum = p + 2;
       const startIndex = p * pageSize;
@@ -959,11 +974,14 @@
     for (let i = 0; i < pdfPages.length; i++) {
       const pageEl = pdfPages[i];
       
+      // ЖЕСТКАЯ ФИКСАЦИЯ ШИРИНЫ 794px ДЛЯ МОБИЛЬНЫХ БРАУЗЕРОВ
       const canvas = await html2canvas(pageEl, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: 794,
+        windowWidth: 794
       });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -1066,4 +1084,4 @@
 </script>
 
 </body>
-</html><script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</html>
