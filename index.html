@@ -14,9 +14,10 @@
   </script>
   <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   
-  <!-- Библиотеки генерации PDF из canvas -->
+  <!-- Библиотеки генерации PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
@@ -56,11 +57,31 @@
     h3.theme-title { margin-top: 20px; color: var(--primary-blue); font-size: 1.1em; }
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
     .question-title { font-weight: 600; font-size: 1.05em; margin-bottom: 12px; line-height: 1.5; }
+    
+    /* ФИКС ДЛЯ ВАРИАНТОВ ОТВЕТОВ И ФОРМУЛ (Задания 35, 36 и др.) */
     .options { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-    .option-label { display: flex; align-items: center; background: #fff; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+    .option-label { 
+      display: flex; 
+      align-items: flex-start; 
+      gap: 10px;
+      background: #fff; 
+      padding: 10px 12px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      line-height: 1.4;
+    }
     .option-label:hover { background: #eff6ff; }
-    .option-label input { margin-right: 10px; }
-    .text-input { width: 100%; max-width: 350px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1em; margin-top: 10px; }
+    .option-label input[type="radio"] { 
+      margin-top: 3px; 
+      flex-shrink: 0; 
+    }
+    .option-label span { 
+      flex: 1; 
+      word-break: break-word; 
+    }
+
+    .text-input { width: 100%; max-width: 350px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1em; margin-top: 10px; box-sizing: border-box; }
     
     .btn-check { background: var(--primary-blue); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 12px; transition: 0.2s; }
     .btn-check:hover { background: #1d4ed8; }
@@ -155,13 +176,12 @@
       max-width: 850px; 
       margin: 20px auto; 
       display: none; 
-      -webkit-overflow-scrolling: touch;
     }
-    #result { display: none; }
+    #result { display: block; }
 
     .pdf-page {
       width: 794px;
-      height: 1122px;
+      min-height: 1122px;
       background: #ffffff;
       padding: 35px 40px;
       box-sizing: border-box;
@@ -169,11 +189,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
       border-radius: 6px;
       position: relative;
-      overflow: hidden;
-      /* Предотвращение сброса графического слоя при прокрутке */
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-      transform: translateZ(0);
     }
 
     /* Объединенный блок шапки первой страницы */
@@ -205,7 +220,7 @@
     .detail-card.incorrect { border-left-color: #d97706; background: #fffbeb; }
     .detail-card.skipped { border-left-color: #dc2626; background: #fef2f2; }
 
-    .detail-q { font-weight: 600; margin-bottom: 6px; color: #1e293b; font-size: 0.9em; line-height: 1.6; padding-right: 0; }
+    .detail-q { font-weight: 600; margin-bottom: 6px; color: #1e293b; font-size: 0.9em; line-height: 1.6; }
     .detail-ans { font-size: 0.86em; color: #475569; line-height: 1.4; padding-right: 110px; }
     
     .badge {
@@ -223,29 +238,27 @@
     .badge-skip { background: #fee2e2; color: #b91c1c; }
 
     .page-footer {
-      position: absolute;
-      bottom: 20px;
-      left: 40px;
-      right: 40px;
       text-align: center;
       font-size: 0.8em;
       color: #94a3b8;
       border-top: 1px solid #e2e8f0;
       padding-top: 8px;
+      margin-top: 20px;
     }
 
-    /* Адаптация под мобильные устройства */
-    @media (max-width: 820px) {
-      #result-wrapper {
-        padding: 0 10px;
-        overflow-x: hidden;
-      }
-
+    /* АДАПТИВНОСТЬ ДЛЯ ЭКРАНА СМАРТФОНА (ВАРИАНТ 3: РАЗДЕЛЕНИЕ ЭКРАНА И PDF) */
+    @media screen and (max-width: 820px) {
+      .container { padding: 15px; margin: 10px auto; }
+      
+      /* Карточка отчета на телефоне сжимается под экран, предотвращая сдвоение формул */
+      #result-wrapper { padding: 0 5px; }
       .pdf-page {
-        transform: scale(calc((100vw - 20px) / 794)) translateZ(0);
-        transform-origin: top center;
-        margin-bottom: calc(-1122px * (1 - (100vw - 20px) / 794) + 20px);
-        will-change: transform;
+        width: 100% !important;
+        min-height: auto !important;
+        padding: 15px !important;
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 15px !important;
       }
 
       .btn-pdf {
@@ -255,6 +268,9 @@
         font-size: 1em;
         padding: 14px;
       }
+      
+      .detail-ans { padding-right: 0; margin-bottom: 30px; }
+      .badge { position: relative; bottom: auto; right: auto; display: inline-block; margin-top: 8px; }
     }
   </style>
 </head>
@@ -294,23 +310,29 @@
       <div class="photo-preview-grid" id="photoPreviewGrid"></div>
     </div>
 
-    <button class="btn-final" onclick="checkAll()">Завершить и посмотреть результаты</button>
+    <button class="btn-final" id="finishBtn" onclick="checkAll()">Завершить и посмотреть результаты</button>
   </div>
 </div>
 
-<!-- Результаты в формате 6 независимых листов А4 -->
+<!-- Результаты -->
 <div id="result-wrapper">
   <div style="text-align: right; margin-bottom: 15px;">
-    <button id="downloadPdfBtn" class="btn-pdf" onclick="downloadPDF()" disabled>⏳ Формируем PDF... (10 сек)</button>
+    <button id="downloadPdfBtn" class="btn-pdf" onclick="downloadPDF()">📥 Скачать PDF-отчет</button>
   </div>
   <div id="result"></div>
 </div>
 
 <script>
+  // Настройки Telegram бота (Укажите ваши данные)
+  const BOT_TOKEN = 'ВАШ_ТОКЕН_БОТА';
+  const CHAT_ID = 'ВАШ_CHAT_ID';
+
   let studentData = { firstName: "", lastName: "", fullName: "" };
-  let generatedPdfBlob = null;
   let uploadedPhotos = []; // Массив загруженных файлов-фотографий
-  let pdfTimerInterval = null;
+
+  function escapeHtml(text) {
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
 
   // Предупреждение о случайном закрытии страницы во время прохождения
   window.onbeforeunload = function() {
@@ -378,7 +400,6 @@
         document.getElementById("quiz-screen").style.display = "block";
         await renderQuiz();
 
-        // Восстановление ответов в поля ввода
         if (state.answers) {
           Object.keys(state.answers).forEach(qId => {
             const val = state.answers[qId];
@@ -410,7 +431,7 @@
       }
     });
     renderPhotoPreviews();
-    event.target.value = ''; // Сброс значения инпута для повторного выбора того же файла
+    event.target.value = '';
   }
 
   function removePhoto(index) {
@@ -445,13 +466,8 @@
     const firstName = document.getElementById("studentFirstName").value.trim();
     const lastName = document.getElementById("studentLastName").value.trim();
 
-    if (!firstName) {
-      alert("Пожалуйста, введите ваше имя!");
-      return;
-    }
-
-    if (!lastName) {
-      alert("Пожалуйста, введите вашу фамилию!");
+    if (!firstName || !lastName) {
+      alert("Пожалуйста, введите ваше имя и фамилию!");
       return;
     }
 
@@ -487,7 +503,7 @@
           theme: "3. Тригонометрические преобразования",
           questions: [
             { type: "text", a: "-0,6", q: "Найдите \\(\\cos \\alpha\\), если \\(\\sin \\alpha = 0{,}8\\) и \\(\\alpha \\in \\left(\\frac{\\pi}{2}; \\pi\\right)\\)." },
-            { type: "radio", a: "0", q: "Упростите выражение: \\(\\frac{\\sin 2\\alpha}{2\\cos \\alpha}\\)", options: ["\\(\\sin \\alpha\\)", "\\(\\cos \\alpha\\)", "\\(2\\sin \\alpha\\)", "\\(1\\)"] }
+            { type: "radio", a: 0, q: "Упростите выражение: \\(\\frac{\\sin 2\\alpha}{2\\cos \\alpha}\\)", options: ["\\(\\sin \\alpha\\)", "\\(\\cos \\alpha\\)", "\\(2\\sin \\alpha\\)", "\\(1\\)"] }
           ]
         }
       ]
@@ -538,7 +554,7 @@
         {
           theme: "9. Элементарные функции и их свойства",
           questions: [
-            { type: "radio", a: "0", q: "Найдите область определения функции \\(y = \\log_2 (6 - 2x)\\).", options: ["\\(x < 3\\)", "\\(x > 3\\)", "\\(x \\le 3\\)", "\\(x \\neq 3\\)"] },
+            { type: "radio", a: 0, q: "Найдите область определения функции \\(y = \\log_2 (6 - 2x)\\).", options: ["\\(x < 3\\)", "\\(x > 3\\)", "\\(x \\le 3\\)", "\\(x \\neq 3\\)"] },
             { type: "text", a: "3", q: "Найдите наибольшее значение функции \\(y = -x^2 + 4x - 1\\)." }
           ]
         },
@@ -597,7 +613,7 @@
         {
           theme: "16. Векторы и координаты на плоскости",
           questions: [
-            { type: "radio", a: "0", q: "Даны векторы \\(\\vec{a}(3; -4)\\) и \\(\\vec{b}(1; 2)\\). Найдите координаты вектора \\(\\vec{c} = 2\\vec{a} + \\vec{b}\\).", options: ["\\((7; -6)\\)", "\\((7; -2)\\)", "\\((5; -6)\\)", "\\((6; -8)\\)"] },
+            { type: "radio", a: 0, q: "Даны векторы \\(\\vec{a}(3; -4)\\) и \\(\\vec{b}(1; 2)\\). Найдите координаты вектора \\(\\vec{c} = 2\\vec{a} + \\vec{b}\\).", options: ["\\((7; -6)\\)", "\\((7; -2)\\)", "\\((5; -6)\\)", "\\((6; -8)\\)"] },
             { type: "text", a: "10", q: "Найдите скалярное произведение векторов \\(\\vec{a}(2; 3)\\) и \\(\\vec{b}(-1; 4)\\)." }
           ]
         }
@@ -609,15 +625,15 @@
         {
           theme: "17. Аксиомы стереометрии и следствия из них",
           questions: [
-            { type: "radio", a: "1", q: "Сколькими различными плоскостями можно провести прямую через три точки, не лежащие на одной прямой?", options: ["Ни одной", "Ровно одной", "Бесконечно многими", "Двумя"] },
-            { type: "radio", a: "0", q: "Две различные плоскости пересекаются по прямой \\(l\\). Точка \\(A\\) принадлежит обеим плоскостям. Лежит ли точка \\(A\\) на прямой \\(l\\)?", options: ["Да", "Нет", "Зависит от угла между плоскостями"] }
+            { type: "radio", a: 1, q: "Сколькими различными плоскостями можно провести прямую через три точки, не лежащие на одной прямой?", options: ["Ни одной", "Ровно одной", "Бесконечно многими", "Двумя"] },
+            { type: "radio", a: 0, q: "Две различные плоскости пересекаются по прямой \\(l\\). Точка \\(A\\) принадлежит обеим плоскостям. Лежит ли точка \\(A\\) на прямой \\(l\\)?", options: ["Да", "Нет", "Зависит от угла между плоскостями"] }
           ]
         },
         {
           theme: "18. Параллельность прямых и плоскостей",
           questions: [
-            { type: "radio", a: "1", q: "Прямая \\(a\\) параллельна прямой \\(b\\), лежащей в плоскости \\(\\alpha\\). Какое утверждение верное?", options: ["Прямая \\(a\\) всегда параллельна \\(\\alpha\\)", "Прямая \\(a\\) параллельна \\(\\alpha\\), если она не лежит в этой плоскости", "Прямая \\(a\\) пересекает \\(\\alpha\\)"] },
-            { type: "radio", a: "0", q: "Через середины сторон \\(AB\\) и \\(BC\\) треугольника \\(ABC\\) проведена прямая \\(MN\\). Каково взаимное расположение прямой \\(MN\\) и плоскости, содержащей сторону \\(AC\\), если \\(MN\\) не лежит в этой плоскости?", options: ["Параллельны", "Пересекаются", "Совпадают"] }
+            { type: "radio", a: 1, q: "Прямая \\(a\\) параллельна прямой \\(b\\), лежащей в плоскости \\(\\alpha\\). Какое утверждение верное?", options: ["Прямая \\(a\\) всегда параллельна \\(\\alpha\\)", "Прямая \\(a\\) параллельна \\(\\alpha\\), если она не лежит в этой плоскости", "Прямая \\(a\\) пересекает \\(\\alpha\\)"] },
+            { type: "radio", a: 0, q: "Через середины сторон \\(AB\\) и \\(BC\\) треугольника \\(ABC\\) проведена прямая \\(MN\\). Каково взаимное расположение прямой \\(MN\\) и плоскости, содержащей сторону \\(AC\\), если \\(MN\\) не лежит в этой плоскости?", options: ["Параллельны", "Пересекаются", "Совпадают"] }
           ]
         },
         {
@@ -661,7 +677,8 @@
           if (qDef.type === "radio") {
             html += `<div class="options" id="opt_${qId}">`;
             qDef.options.forEach((opt, oIdx) => {
-              html += `<label class="option-label"><input type="radio" name="${qId}" value="${oIdx}" onchange="saveStateToStorage()"> ${opt}</label>`;
+              // ИСПРАВЛЕНИЕ: Обернули ${opt} в <span> для предотвращения разрыва верстки
+              html += `<label class="option-label"><input type="radio" name="${qId}" value="${oIdx}" onchange="saveStateToStorage()"> <span>${opt}</span></label>`;
             });
             html += `</div>`;
           } else {
@@ -690,7 +707,7 @@
     if (qDef.type === "radio") {
       const els = document.getElementsByName(qId);
       for (let el of els) { if (el.checked) userAns = el.value; }
-      qDef.userText = (userAns !== "") ? qDef.options[userAns] : "Не выбрано";
+      qDef.userText = (userAns !== "") ? qDef.options[parseInt(userAns)] : "Не выбрано";
       qDef.correctText = qDef.options[qDef.a];
     } else {
       userAns = document.getElementById(qId).value.trim().replace(/\./g, ",");
@@ -707,7 +724,9 @@
       return;
     }
 
-    if (userAns === qDef.a) {
+    const isRight = (qDef.type === "radio") ? (parseInt(userAns) === qDef.a) : (userAns === qDef.a);
+
+    if (isRight) {
       feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
       qDef.isCorrect = true;
       btnEl.style.display = "none";
@@ -726,7 +745,7 @@
   async function checkAll() {
     let totalCorrect = 0;
     let totalQuestions = 0;
-    let reportHtml = "";
+    let reportBlocksHtml = "";
     let allCards = [];
     let qIndex = 1;
 
@@ -774,216 +793,174 @@
         blockTotal += themeTotal;
       });
 
-      reportHtml += `<div class="report-block">`;
-      reportHtml += `<h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>`;
-      reportHtml += `<ul>${themesHtml}</ul>`;
-      reportHtml += `</div>`;
+      reportBlocksHtml += `<div class="report-block">`;
+      reportBlocksHtml += `<h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>`;
+      reportBlocksHtml += `<ul>${themesHtml}</ul>`;
+      reportBlocksHtml += `</div>`;
 
       totalCorrect += blockCorrect;
       totalQuestions += blockTotal;
     });
 
-    // Объединенный синий блок в шапке 1-й страницы
-    let combinedHeader = `
+    const percent = Math.round((totalCorrect / totalQuestions) * 100);
+
+    const combinedHeader = `
       <div class="combined-header">
         <h2 style="margin: 0 0 4px 0; font-size: 1.3em; color: #ffffff;">Отчет по диагностическому тестированию (11 класс)</h2>
-        <p style="margin: 0 0 14px 0; color: #93c5fd; font-size: 0.95em;">Ученик: <b>${escapeHtml(studentData.fullName)}</b></p>
-        <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 12px; margin-top: 10px;">
-          <h3 style="margin: 0 0 6px 0; color: #60a5fa; font-size: 1.15em;">Благодарим за прохождение диагностики!</h3>
-          <p style="margin: 0; line-height: 1.4; color: #e2e8f0; font-size: 0.9em;">Результаты этого тестирования помогут выявить сильные стороны и составить индивидуальный план повторения всех ключевых тем 1–10 классов для успешной подготовки к ЕГЭ.</p>
+        <p style="margin: 0 0 10px 0; color: #93c5fd; font-size: 0.95em;">Ученик: <b>${escapeHtml(studentData.fullName)}</b></p>
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 10px;">
+          <h3 style="margin: 0; color: #60a5fa; font-size: 1.15em;">Итоговый результат: ${totalCorrect} из ${totalQuestions} (${percent}%)</h3>
         </div>
       </div>
     `;
 
-    let headerHtml = `<h3 style="text-align:center; color:#16a34a; font-size:1.2em; border-bottom: 2px solid #86efac; padding-bottom: 8px; margin-top: 5px; margin-bottom: 12px;">Общий результат: ${totalCorrect} из ${totalQuestions}</h3>`;
-
-    const pageSizes = [9, 9, 9, 8, 7];
-    const totalPages = 6;
-
-    // Страница 1
-    let pagesHtml = `
+    // Формирование листов А4
+    const page1 = `
       <div class="pdf-page">
         ${combinedHeader}
-        ${headerHtml}
-        ${reportHtml}
-        <div class="page-footer">Диагностический отчет по математике | Страница 1 из ${totalPages}</div>
+        <h3 class="detail-section-title">Сводка по блокам знаний</h3>
+        ${reportBlocksHtml}
+        <div class="page-footer">Страница 1</div>
       </div>
     `;
 
-    // Страницы 2-6
-    let currentIndex = 0;
-    for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
-      const count = pageSizes[pageNum - 2];
-      const startIndex = currentIndex;
-      const pageCards = allCards.slice(startIndex, startIndex + count).join("");
-      const startQ = startIndex + 1;
-      const endQ = Math.min(startIndex + count, allCards.length);
-      currentIndex += count;
+    let pagesHtml = page1;
+    let cardIdx = 0;
+    let pageNum = 2;
 
+    while (cardIdx < allCards.length) {
+      let pageCards = allCards.slice(cardIdx, cardIdx + 7).join("");
       pagesHtml += `
         <div class="pdf-page">
-          <h3 class="detail-section-title">Результаты выполнения заданий (Задания ${startQ}–${endQ})</h3>
+          <h3 class="detail-section-title">Детализация ответов (продолжение)</h3>
           ${pageCards}
-          <div class="page-footer">Диагностический отчет по математике | Страница ${pageNum} из ${totalPages}</div>
+          <div class="page-footer">Страница ${pageNum}</div>
         </div>
       `;
+      cardIdx += 7;
+      pageNum++;
     }
 
     const resultDiv = document.getElementById("result");
     resultDiv.innerHTML = pagesHtml;
-    
-    // Переключаем видимость экранов
+
     document.getElementById("main-container").style.display = "none";
     document.getElementById("result-wrapper").style.display = "block";
-    resultDiv.style.display = "block";
 
-    // Прокрутка наверх
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-
-    // Очищаем локальное хранилище после завершения
-    clearStorage();
-
-    // Рендерим формулы
     await safeTypeset(resultDiv);
 
-    // Запускаем отсчет 10 секунд и фоновое создание PDF
-    startPdfCountdownAndBuild(studentData.fullName, totalCorrect, totalQuestions);
+    // Автоматическая отправка PDF и загруженных фото в Telegram
+    sendToTelegram(studentData.fullName, totalCorrect, totalQuestions);
   }
 
-  function startPdfCountdownAndBuild(fullName, totalCorrect, totalQuestions) {
-    const pdfBtn = document.getElementById("downloadPdfBtn");
-    pdfBtn.disabled = true;
-    generatedPdfBlob = null;
-    
-    let secondsLeft = 10;
-    pdfBtn.innerText = `⏳ Формируем PDF... (${secondsLeft} сек)`;
+  // --- СКАЧИВАНИЕ PDF УЧЕНИКОМ ---
+  async function downloadPDF() {
+    const btn = document.getElementById("downloadPdfBtn");
+    btn.disabled = true;
+    btn.innerText = "⏳ Формирование PDF...";
 
-    // Параллельно собираем PDF в фоновом режиме
-    const pdfPromise = buildPerfectPdfBlob().then(blob => {
-      generatedPdfBlob = blob;
-      // Фоновая отправка в Telegram
-      sendPdfAndPhotosToTelegram(fullName, totalCorrect, totalQuestions, blob, uploadedPhotos);
-    }).catch(err => {
-      console.error("Ошибка генерации PDF:", err);
-    });
+    const element = document.getElementById('result');
+    if (window.MathJax) await MathJax.typesetPromise([element]);
 
-    if (pdfTimerInterval) clearInterval(pdfTimerInterval);
-
-    pdfTimerInterval = setInterval(() => {
-      secondsLeft--;
-      if (secondsLeft > 0) {
-        pdfBtn.innerText = `⏳ Формируем PDF... (${secondsLeft} сек)`;
-      } else {
-        clearInterval(pdfTimerInterval);
-        pdfTimerInterval = null;
-        
-        pdfPromise.finally(() => {
-          pdfBtn.disabled = false;
-          pdfBtn.innerText = "📄 Скачать PDF-отчет";
-        });
-      }
-    }, 1000);
-  }
-
-  async function buildPerfectPdfBlob() {
-    const pdfPages = document.querySelectorAll('.pdf-page');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    for (let i = 0; i < pdfPages.length; i++) {
-      const pageEl = pdfPages[i];
-      
-      const canvas = await html2canvas(pageEl, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      
-      if (i > 0) {
-        pdf.addPage('a4', 'portrait');
-      }
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-    }
-
-    return pdf.output('blob');
-  }
-
-  function downloadPDF() {
-    const pdfBtn = document.getElementById("downloadPdfBtn");
-
-    if (!generatedPdfBlob) {
-      alert("PDF-отчет еще формируется, пожалуйста, подождите несколько секунд.");
-      return;
-    }
+    const opt = {
+      margin:       10,
+      filename:     `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
 
     try {
-      const url = URL.createObjectURL(generatedPdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Отчет_11класс_${studentData.lastName}_${studentData.firstName}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Ошибка при скачивании PDF:", err);
-      alert("Произошла ошибка при скачивании файла.");
+      await html2pdf().set(opt).from(element).save();
+    } catch(e) {
+      console.error(e);
+      alert("Ошибка при сохранении PDF");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "📥 Скачать PDF-отчет";
     }
   }
 
-  // Отправка PDF и прикрепленных фотографий письменных решений в Telegram
-  async function sendPdfAndPhotosToTelegram(fullName, score, total, pdfBlob, photosList) {
-    const BOT_TOKEN = "8653464504:AAFpobQydaloxKuIojpyBaV84sHr1hy2HwE";
-    const CHAT_ID = "433123553";
+  // --- ОТПРАВКА В TELEGRAM (PDF + ФОТО АЛЬБОМОМ) ---
+  async function sendToTelegram(fullName, correct, total) {
+    if (BOT_TOKEN === 'ВАШ_ТОКЕН_БОТА' || !BOT_TOKEN) return;
 
     try {
-      // 1. Отправляем PDF отчет
-      const formData = new FormData();
-      formData.append('chat_id', CHAT_ID);
-      formData.append('caption', `🎯 <b>Результаты теста 11 класс (1–10 класс)</b>\n👤 <b>Ученик:</b> ${escapeHtml(fullName)}\n📊 <b>Результат:</b> ${score} из ${total}\n📸 <b>Прикреплено фото решений:</b> ${photosList.length} шт.`);
-      formData.append('parse_mode', 'HTML');
-      formData.append('document', pdfBlob, `Отчет_11класс_${fullName}.pdf`);
+      const element = document.getElementById('result');
+      if (window.MathJax) await MathJax.typesetPromise([element]);
+
+      const opt = {
+        margin:       10,
+        filename:     `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      // 1. Создаем PDF в виде Blob
+      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+
+      // 2. Отправляем PDF Документ
+      const pdfData = new FormData();
+      pdfData.append('chat_id', CHAT_ID);
+      pdfData.append('caption', `📊 Результат теста: ${fullName}\nНабрано баллов: ${correct} из ${total}`);
+      pdfData.append('document', pdfBlob, `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`);
 
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-        method: "POST",
-        body: formData
+        method: 'POST',
+        body: pdfData
       });
 
-      // 2. Последовательно отправляем все фото решений (если они загружены)
-      for (let i = 0; i < photosList.length; i++) {
-        const photoData = new FormData();
-        photoData.append('chat_id', CHAT_ID);
-        photoData.append('caption', `📷 <b>Решение (фото ${i + 1} из ${photosList.length})</b>\n👤 Ученик: ${escapeHtml(fullName)}`);
-        photoData.append('parse_mode', 'HTML');
-        photoData.append('photo', photosList[i]);
+      // 3. Отправляем фото письменных решений АЛЬБОМОМ ( sendMediaGroup )
+      if (uploadedPhotos && uploadedPhotos.length > 0) {
+        if (uploadedPhotos.length === 1) {
+          // Если только 1 фото — отправляем обычным sendPhoto
+          const singleData = new FormData();
+          singleData.append('chat_id', CHAT_ID);
+          singleData.append('photo', uploadedPhotos[0]);
+          singleData.append('caption', `📷 Черновик ученика: ${fullName}`);
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          body: photoData
-        });
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: singleData
+          });
+        } else {
+          // Если 2 и более фото — отправляем АЛЬБОМОМ через sendMediaGroup
+          const mediaGroupData = new FormData();
+          mediaGroupData.append('chat_id', CHAT_ID);
+
+          const mediaArray = [];
+          uploadedPhotos.forEach((file, i) => {
+            const attachName = `photo_${i}`;
+            mediaGroupData.append(attachName, file);
+
+            const mediaItem = {
+              type: 'photo',
+              media: `attach://${attachName}`
+            };
+
+            if (i === 0) {
+              mediaItem.caption = `📷 Черновики решения: ${fullName} (${uploadedPhotos.length} фото)`;
+            }
+
+            mediaArray.push(mediaItem);
+          });
+
+          mediaGroupData.append('media', JSON.stringify(mediaArray));
+
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+            method: 'POST',
+            body: mediaGroupData
+          });
+        }
       }
-
-      console.log("PDF и все фотографии успешно отправлены в Telegram!");
-    } catch (err) {
-      console.error("Ошибка отправки в Telegram:", err);
+      clearStorage();
+    } catch(e) {
+      console.error("Ошибка отправки в Telegram:", e);
     }
   }
 
-  function escapeHtml(string) {
-    return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  // При загрузке страницы проверяем сохраненный прогресс
+  // При загрузке страницы восстанавливаем сохраненный прогресс, если он был
   window.addEventListener('DOMContentLoaded', restoreStateFromStorage);
 </script>
 
