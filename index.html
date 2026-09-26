@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Диагностический тест по математике | 11 класс (1–10 класс)</title>
+  
+  <!-- MathJax SVG с локальным кешем шрифтов -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  
+  <!-- Библиотеки генерации PDF из canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary-dark: #1b365d;
+      --primary-blue: #2563eb;
+      --bg-light: #f4f6f9;
+      --card-bg: #ffffff;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: var(--bg-light); color: #333; margin: 0; padding: 0; }
+
+    .container { max-width: 900px; margin: 40px auto; background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+    /* Экран входа */
+    #auth-screen { text-align: center; padding: 20px 0; }
+    .auth-form { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+    .auth-input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1em; outline: none; }
+    .auth-input:focus { border-color: var(--primary-blue); }
+
+    /* Памятка вверху теста */
+    .top-instruction {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 15px 20px;
+      margin-bottom: 25px;
+      text-align: center;
+      color: #334155;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+    .top-instruction strong {
+      color: var(--primary-dark);
+    }
+
+    /* Оформление карточек во время теста */
+    h2.block-title { margin-top: 30px; color: var(--primary-dark); border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; font-size: 1.3em; }
+    h3.theme-title { margin-top: 20px; color: var(--primary-blue); font-size: 1.1em; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+    .question-title { font-weight: 600; font-size: 1.05em; margin-bottom: 12px; line-height: 1.5; }
+    .options { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .option-label { display: flex; align-items: center; background: #fff; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+    .option-label:hover { background: #eff6ff; }
+    .option-label input { margin-right: 10px; }
+    .text-input { width: 100%; max-width: 350px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1em; margin-top: 10px; }
+    
+    .btn-check { background: var(--primary-blue); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 12px; transition: 0.2s; }
+    .btn-check:hover { background: #1d4ed8; }
+    .feedback { display: inline-block; margin-left: 15px; font-weight: bold; font-size: 1.05em; }
+
+    /* Секция прикрепления фото решений */
+    .photo-section {
+      background: #eff6ff;
+      border: 2px dashed var(--primary-blue);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+      text-align: center;
+    }
+    .photo-section h3 { margin: 0 0 8px 0; color: var(--primary-dark); font-size: 1.15em; }
+    .photo-section p { margin: 0 0 15px 0; color: #475569; font-size: 0.95em; }
+    .btn-photo-upload {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.2s;
+    }
+    .btn-photo-upload:hover { background: #2563eb; }
+    
+    .photo-preview-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 15px;
+      justify-content: center;
+    }
+    .photo-preview-card {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .photo-preview-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .photo-remove-btn {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      background: rgba(220, 38, 38, 0.85);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .btn-final { display: block; width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 8px; font-size: 1.2em; font-weight: bold; cursor: pointer; margin-top: 25px; transition: 0.2s; }
+    .btn-final:hover { background: #15803d; }
+
+    /* Кнопка скачивания PDF */
+    .btn-pdf { display: inline-block; background: var(--primary-dark); color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; transition: 0.2s; }
+    .btn-pdf:hover:not(:disabled) { background: var(--primary-blue); }
+    .btn-pdf:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.8; }
+
+    /* Предотвращение обрезки и правильное отображение MathJax SVG */
+    mjx-container[jax="SVG"] {
+      display: inline-block !important;
+      margin: 0 2px !important;
+    }
+    mjx-container[jax="SVG"] svg {
+      overflow: visible !important;
+    }
+
+    /* СТИЛИЗАЦИЯ ПОСТРАНИЧНОГО ОТЧЕТА (A4-ЛИСТ) */
+    #result-wrapper { 
+      max-width: 850px; 
+      margin: 20px auto; 
+      display: none; 
+      -webkit-overflow-scrolling: touch;
+    }
+    #result { display: none; }
+
+    .pdf-page {
+      width: 794px;
+      height: 1122px;
+      background: #ffffff;
+      padding: 35px 40px;
+      box-sizing: border-box;
+      margin: 0 auto 30px auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      /* Предотвращение сброса графического слоя при прокрутке */
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+
+    /* Объединенный блок шапки первой страницы */
+    .combined-header {
+      background: var(--primary-dark);
+      color: #ffffff;
+      padding: 18px 22px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .report-block { margin-bottom: 10px; }
+    .report-block h4 { margin: 3px 0 4px 0; color: var(--primary-dark); font-size: 0.98em; }
+    .report-block ul { margin: 0; padding-left: 18px; font-size: 0.88em; }
+
+    .detail-section-title { margin-top: 0; margin-bottom: 15px; color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 8px; font-size: 1.2em; }
+    
+    .detail-card {
+      background: #ffffff;
+      border-left: 4px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 12px 12px 12px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      position: relative;
+    }
+    .detail-card.correct { border-left-color: #16a34a; background: #f0fdf4; }
+    .detail-card.incorrect { border-left-color: #d97706; background: #fffbeb; }
+    .detail-card.skipped { border-left-color: #dc2626; background: #fef2f2; }
+
+    .detail-q { font-weight: 600; margin-bottom: 6px; color: #1e293b; font-size: 0.9em; line-height: 1.6; padding-right: 0; }
+    .detail-ans { font-size: 0.86em; color: #475569; line-height: 1.4; padding-right: 110px; }
+    
+    .badge {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.78em;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .badge-err { background: #fef3c7; color: #b45309; }
+    .badge-skip { background: #fee2e2; color: #b91c1c; }
+
+    .page-footer {
+      position: absolute;
+      bottom: 20px;
+      left: 40px;
+      right: 40px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+    }
+
+    /* Адаптация под мобильные устройства */
+    @media (max-width: 820px) {
+      #result-wrapper {
+        padding: 0 10px;
+        overflow-x: hidden;
+      }
+
+      .pdf-page {
+        transform: scale(calc((100vw - 20px) / 794)) translateZ(0);
+        transform-origin: top center;
+        margin-bottom: calc(-1122px * (1 - (100vw - 20px) / 794) + 20px);
+        will-change: transform;
+      }
+
+      .btn-pdf {
+        width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        font-size: 1em;
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="main-container">
+  <!-- Экран авторизации -->
+  <div id="auth-screen">
+    <h2>Диагностическое тестирование по математике (11 класс)</h2>
+    <p style="color: #64748b; margin-bottom: 25px;">Заполните свои данные для начала прохождения теста:</p>
+    <div class="auth-form">
+      <input type="text" id="studentFirstName" class="auth-input" placeholder="Имя" oninput="saveStateToStorage()" required>
+      <input type="text" id="studentLastName" class="auth-input" placeholder="Фамилия" oninput="saveStateToStorage()" required>
+      <button class="btn-check" style="font-size: 1.1em; padding: 12px;" onclick="startQuiz()">Начать тест</button>
+    </div>
+  </div>
+
+  <!-- Экран теста -->
+  <div id="quiz-screen" style="display: none;">
+    <div class="top-instruction">
+      Решайте задания по порядку. Если ответ — десятичная дробь, используйте запятую (например, 2,5).<br>
+      <strong style="display: inline-block; margin-top: 6px;">📌 Важно: сохраняйте все свои письменные решения (черновик) — в самом конце теста их нужно будет сфотографировать и прикрепить файлами перед отправкой!</strong>
+    </div>
+
+    <div id="quiz-container"></div>
+
+    <!-- Блок прикрепления фотографий решений -->
+    <div class="photo-section">
+      <h3>📷 Прикрепить фото или файлы письменных решений</h3>
+      <p>Загрузите фотографии или сканы ваших черновиков перед завершением тестирования:</p>
+      
+      <input type="file" id="solutionPhotosInput" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload(event)">
+      <button type="button" class="btn-photo-upload" onclick="document.getElementById('solutionPhotosInput').click()">
+        ➕ Прикрепить фото или файлы решений
+      </button>
+
+      <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+    </div>
+
+    <button class="btn-final" onclick="checkAll()">Завершить и посмотреть результаты</button>
+  </div>
+</div>
+
+<!-- Результаты в формате 6 независимых листов А4 -->
+<div id="result-wrapper">
+  <div style="text-align: right; margin-bottom: 15px;">
+    <button id="downloadPdfBtn" class="btn-pdf" onclick="downloadPDF()" disabled>⏳ Формируем PDF... (10 сек)</button>
+  </div>
+  <div id="result"></div>
+</div>
+
+<script>
+  let studentData = { firstName: "", lastName: "", fullName: "" };
+  let generatedPdfBlob = null;
+  let uploadedPhotos = []; // Массив загруженных файлов-фотографий
+  let pdfTimerInterval = null;
+
+  // Предупреждение о случайном закрытии страницы во время прохождения
+  window.onbeforeunload = function() {
+    if (document.getElementById("quiz-screen").style.display === "block") {
+      return "Вы уверены, что хотите покинуть страницу? Введенные данные сохранены в браузере.";
+    }
+  };
+
+  async function safeTypeset(targetElement) {
+    if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+      try {
+        await MathJax.typesetPromise(targetElement ? [targetElement] : []);
+      } catch (err) {
+        console.error("MathJax error:", err);
+      }
+    }
+  }
+
+  // --- СИСТЕМА АВТОСОХРАНЕНИЯ ПРОГРЕССА (LOCAL STORAGE) ---
+  function saveStateToStorage() {
+    const fn = document.getElementById("studentFirstName").value.trim();
+    const ln = document.getElementById("studentLastName").value.trim();
+    
+    const answersData = {};
+    quizData.forEach((block, bIdx) => {
+      block.themes.forEach((theme, tIdx) => {
+        theme.questions.forEach((qDef, qIdx) => {
+          const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
+          if (qDef.type === "radio") {
+            const checked = document.querySelector(`input[name="${qId}"]:checked`);
+            if (checked) answersData[qId] = checked.value;
+          } else {
+            const input = document.getElementById(qId);
+            if (input && input.value) answersData[qId] = input.value;
+          }
+        });
+      });
+    });
+
+    const state = {
+      firstName: fn,
+      lastName: ln,
+      answers: answersData,
+      isStarted: document.getElementById("quiz-screen").style.display === "block"
+    };
+
+    localStorage.setItem('math_test_saved_state', JSON.stringify(state));
+  }
+
+  async function restoreStateFromStorage() {
+    const saved = localStorage.getItem('math_test_saved_state');
+    if (!saved) return;
+
+    try {
+      const state = JSON.parse(saved);
+      if (state.firstName) document.getElementById("studentFirstName").value = state.firstName;
+      if (state.lastName) document.getElementById("studentLastName").value = state.lastName;
+
+      if (state.isStarted && state.firstName && state.lastName) {
+        studentData.firstName = state.firstName;
+        studentData.lastName = state.lastName;
+        studentData.fullName = `${state.firstName} ${state.lastName}`;
+
+        document.getElementById("auth-screen").style.display = "none";
+        document.getElementById("quiz-screen").style.display = "block";
+        await renderQuiz();
+
+        // Восстановление ответов в поля ввода
+        if (state.answers) {
+          Object.keys(state.answers).forEach(qId => {
+            const val = state.answers[qId];
+            const textInput = document.getElementById(qId);
+            if (textInput) {
+              textInput.value = val;
+            } else {
+              const radioInput = document.querySelector(`input[name="${qId}"][value="${val}"]`);
+              if (radioInput) radioInput.checked = true;
+            }
+          });
+        }
+      }
+    } catch(e) {
+      console.error("Ошибка при восстановлении данных:", e);
+    }
+  }
+
+  function clearStorage() {
+    localStorage.removeItem('math_test_saved_state');
+  }
+
+  // --- ОБРАБОТКА ЗАГРУЗКИ ФОТО РЕШЕНИЙ ---
+  function handlePhotoUpload(event) {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        uploadedPhotos.push(file);
+      }
+    });
+    renderPhotoPreviews();
+    event.target.value = ''; // Сброс значения инпута для повторного выбора того же файла
+  }
+
+  function removePhoto(index) {
+    uploadedPhotos.splice(index, 1);
+    renderPhotoPreviews();
+  }
+
+  function renderPhotoPreviews() {
+    const grid = document.getElementById('photoPreviewGrid');
+    grid.innerHTML = '';
+
+    uploadedPhotos.forEach((file, idx) => {
+      const card = document.createElement('div');
+      card.className = 'photo-preview-card';
+      
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'photo-remove-btn';
+      removeBtn.type = 'button';
+      removeBtn.innerHTML = '✕';
+      removeBtn.onclick = () => removePhoto(idx);
+
+      card.appendChild(img);
+      card.appendChild(removeBtn);
+      grid.appendChild(card);
+    });
+  }
+
+  async function startQuiz() {
+    const firstName = document.getElementById("studentFirstName").value.trim();
+    const lastName = document.getElementById("studentLastName").value.trim();
+
+    if (!firstName) {
+      alert("Пожалуйста, введите ваше имя!");
+      return;
+    }
+
+    if (!lastName) {
+      alert("Пожалуйста, введите вашу фамилию!");
+      return;
+    }
+
+    studentData.firstName = firstName;
+    studentData.lastName = lastName;
+    studentData.fullName = `${firstName} ${lastName}`;
+
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("quiz-screen").style.display = "block";
+    saveStateToStorage();
+    await renderQuiz();
+  }
+
+  const quizData = [
+    {
+      block: "Блок 1. Арифметика и алгебраические преобразования",
+      themes: [
+        {
+          theme: "1. Вычисления, проценты и рациональные дроби",
+          questions: [
+            { type: "text", a: "2,5", q: "Вычислите значение выражения: \\(\\frac{2{,}4 \\cdot 0{,}5}{0{,}3} - 1{,}5\\)" },
+            { type: "text", a: "20", q: "Цена товара снизилась с 2000 рублей до 1600 рублей. На сколько процентов снизилась цена?" }
+          ]
+        },
+        {
+          theme: "2. Степени, корни и логарифмы",
+          questions: [
+            { type: "text", a: "4", q: "Найдите значение выражения: \\(\\log_2 48 - \\log_2 3\\)" },
+            { type: "text", a: "300", q: "Вычислите: \\(\\sqrt[3]{27 \\cdot 10^6}\\)" }
+          ]
+        },
+        {
+          theme: "3. Тригонометрические преобразования",
+          questions: [
+            { type: "text", a: "-0,6", q: "Найдите \\(\\cos \\alpha\\), если \\(\\sin \\alpha = 0{,}8\\) и \\(\\alpha \\in \\left(\\frac{\\pi}{2}; \\pi\\right)\\)." },
+            { type: "radio", a: "0", q: "Упростите выражение: \\(\\frac{\\sin 2\\alpha}{2\\cos \\alpha}\\)", options: ["\\(\\sin \\alpha\\)", "\\(\\cos \\alpha\\)", "\\(2\\sin \\alpha\\)", "\\(1\\)"] }
+          ]
+        }
+      ]
+    },
+    {
+      block: "Блок 2. Уравнения и системы уравнений",
+      themes: [
+        {
+          theme: "4. Рациональные уравнения",
+          questions: [
+            { type: "text", a: "-3", q: "Решите уравнение: \\(\\frac{x^2 - 9}{x - 3} = 0\\)" },
+            { type: "text", a: "2", q: "Найдите наибольший корень уравнения: \\(x^3 - 4x = 0\\)" }
+          ]
+        },
+        {
+          theme: "5. Показательные и логарифмические уравнения",
+          questions: [
+            { type: "text", a: "2", q: "Решите уравнение: \\(3^{x+1} - 3^x = 18\\)" },
+            { type: "text", a: "5", q: "Решите уравнение: \\(\\log_3 (2x - 1) = 2\\)" }
+          ]
+        },
+        {
+          theme: "6. Тригонометрические уравнения",
+          questions: [
+            { type: "text", a: "30", q: "Найдите наименьший положительный корень уравнения \\(\\sin x = \\frac{1}{2}\\) (в градусах)." },
+            { type: "text", a: "2", q: "Укажите количество корней уравнения \\(\\cos x = 0\\) на отрезке \\([0; 2\\pi]\\)." }
+          ]
+        },
+        {
+          theme: "7. Системы уравнений",
+          questions: [
+            { type: "text", a: "4", q: "Решите систему \\(\\begin{cases} x + y = 5 \\\\ x^2 - y^2 = 15 \\end{cases}\\). В ответ запишите значение \\(x \\cdot y\\)." },
+            { type: "text", a: "1", q: "Решите систему \\(\\begin{cases} y - x = 2 \\\\ y = x^2 \\end{cases}\\). Запишите сумму всех \\(x\\)-координат решений." }
+          ]
+        }
+      ]
+    },
+    {
+      block: "Блок 3. Неравенства и функции",
+      themes: [
+        {
+          theme: "8. Неравенства и их системы",
+          questions: [
+            { type: "text", a: "2", q: "Решите неравенство методом интервалов: \\(\\frac{(x-2)(x+5)}{x-1} \\le 0\\). Укажите наименьшее натуральное решение." },
+            { type: "text", a: "0", q: "Решите показательное неравенство: \\(2^{3-x} > 4\\). Укажите наибольшее целое решение." }
+          ]
+        },
+        {
+          theme: "9. Элементарные функции и их свойства",
+          questions: [
+            { type: "radio", a: "0", q: "Найдите область определения функции \\(y = \\log_2 (6 - 2x)\\).", options: ["\\(x < 3\\)", "\\(x > 3\\)", "\\(x \\le 3\\)", "\\(x \\neq 3\\)"] },
+            { type: "text", a: "3", q: "Найдите наибольшее значение функции \\(y = -x^2 + 4x - 1\\)." }
+          ]
+        },
+        {
+          theme: "10. Начала математического анализа",
+          questions: [
+            { type: "text", a: "0", q: "Найдите значение производной функции \\(f(x) = x^3 - 3x^2 + 5\\) в точке \\(x_0 = 2\\)." },
+            { type: "text", a: "3", q: "Найдите точку минимума функции \\(y = x^2 - 6x + 10\\)." }
+          ]
+        }
+      ]
+    },
+    {
+      block: "Блок 4. Последовательности, комбинаторика и вероятность",
+      themes: [
+        {
+          theme: "11. Прогрессии",
+          questions: [
+            { type: "text", a: "210", q: "В арифметической прогрессии \\(a_1 = 3\\), а разность \\(d = 4\\). Найдите сумму первых 10 членов \\(S_{10}\\)." },
+            { type: "text", a: "54", q: "В геометрической прогрессии \\(b_1 = 2\\), знаменатель \\(q = 3\\). Найдите четвертый член \\(b_4\\)." }
+          ]
+        },
+        {
+          theme: "12. Комбинаторика и теория вероятностей",
+          questions: [
+            { type: "text", a: "24", q: "Сколькими способами можно расставить 4 разные книги на полке?" },
+            { type: "text", a: "0,4", q: "В урне 4 белых и 6 черных шаров. Какова вероятность случайным образом вытащить белый шар?" }
+          ]
+        }
+      ]
+    },
+    {
+      block: "Блок 5. Планиметрия (Геометрия на плоскости)",
+      themes: [
+        {
+          theme: "13. Треугольники",
+          questions: [
+            { type: "text", a: "7", q: "В треугольнике \\(ABC\\) стороны \\(AB = 5\\), \\(BC = 8\\), а угол между ними \\(\\angle B = 60^\\circ\\). Найдите третью сторону \\(AC\\)." },
+            { type: "text", a: "24", q: "В прямоугольном треугольнике гипотенуза равна 10, а один из катетов — 6. Найдите площадь треугольника." }
+          ]
+        },
+        {
+          theme: "14. Четырехугольники и многоугольники",
+          questions: [
+            { type: "text", a: "24", q: "Найдите площадь ромба, если его диагонали равны 6 и 8." },
+            { type: "text", a: "13", q: "Основания равнобедренной трапеции равны 8 и 18, а высота равна 12. Найдите боковую сторону трапеции." }
+          ]
+        },
+        {
+          theme: "15. Окружность и круг",
+          questions: [
+            { type: "text", a: "100", q: "Из точки \\(A\\) к окружности проведены касательные \\(AB\\) и \\(AC\\). Градусная мера вписанного угла, опирающегося на ту же дугу \\(BC\\), равна \\(50^\\circ\\). Найдите центральный угол, опирающийся на эту дугу." },
+            { type: "text", a: "8", q: "Радиус окружности равен 5. Найдите длину хорды, удаленной от центра окружности на расстояние 3." }
+          ]
+        },
+        {
+          theme: "16. Векторы и координаты на плоскости",
+          questions: [
+            { type: "radio", a: "0", q: "Даны векторы \\(\\vec{a}(3; -4)\\) и \\(\\vec{b}(1; 2)\\). Найдите координаты вектора \\(\\vec{c} = 2\\vec{a} + \\vec{b}\\).", options: ["\\((7; -6)\\)", "\\((7; -2)\\)", "\\((5; -6)\\)", "\\((6; -8)\\)"] },
+            { type: "text", a: "10", q: "Найдите скалярное произведение векторов \\(\\vec{a}(2; 3)\\) и \\(\\vec{b}(-1; 4)\\)." }
+          ]
+        }
+      ]
+    },
+    {
+      block: "Блок 6. Стереометрия (Геометрия в пространстве)",
+      themes: [
+        {
+          theme: "17. Аксиомы стереометрии и следствия из них",
+          questions: [
+            { type: "radio", a: "1", q: "Сколькими различными плоскостями можно провести прямую через три точки, не лежащие на одной прямой?", options: ["Ни одной", "Ровно одной", "Бесконечно многими", "Двумя"] },
+            { type: "radio", a: "0", q: "Две различные плоскости пересекаются по прямой \\(l\\). Точка \\(A\\) принадлежит обеим плоскостям. Лежит ли точка \\(A\\) на прямой \\(l\\)?", options: ["Да", "Нет", "Зависит от угла между плоскостями"] }
+          ]
+        },
+        {
+          theme: "18. Параллельность прямых и плоскостей",
+          questions: [
+            { type: "radio", a: "1", q: "Прямая \\(a\\) параллельна прямой \\(b\\), лежащей в плоскости \\(\\alpha\\). Какое утверждение верное?", options: ["Прямая \\(a\\) всегда параллельна \\(\\alpha\\)", "Прямая \\(a\\) параллельна \\(\\alpha\\), если она не лежит в этой плоскости", "Прямая \\(a\\) пересекает \\(\\alpha\\)"] },
+            { type: "radio", a: "0", q: "Через середины сторон \\(AB\\) и \\(BC\\) треугольника \\(ABC\\) проведена прямая \\(MN\\). Каково взаимное расположение прямой \\(MN\\) и плоскости, содержащей сторону \\(AC\\), если \\(MN\\) не лежит в этой плоскости?", options: ["Параллельны", "Пересекаются", "Совпадают"] }
+          ]
+        },
+        {
+          theme: "19. Перпендикулярность прямых и плоскостей, ТТП",
+          questions: [
+            { type: "text", a: "3", q: "Из точки \\(A\\) к плоскости проведен перпендикуляр \\(AH = 4\\) см и наклонная \\(AB = 5\\) см. Найдите длину проекции \\(BH\\)." },
+            { type: "text", a: "10", q: "К плоскости квадрата \\(ABCD\\) со стороны \\(3\\sqrt{2}\\) проведён перпендикуляр \\(AK = 8\\). Найдите расстояние от точки \\(K\\) до вершины \\(C\\)." }
+          ]
+        },
+        {
+          theme: "20. Многогранники (призма, пирамида)",
+          questions: [
+            { type: "text", a: "45", q: "В правильной четырехугольной призме сторона основания равна 3, а высота равна 5. Найдите объем призмы." },
+            { type: "text", a: "24", q: "В правильной треугольной пирамиде площадь основания равна 12, а высота равна 6. Найдите объем пирамиды." }
+          ]
+        },
+        {
+          theme: "21. Тела вращения (цилиндр, конус, шар)",
+          questions: [
+            { type: "text", a: "36", q: "Осевое сечение цилиндра — квадрат со стороной 6. Найдите площадь боковой поверхности цилиндра (в ответе укажите \\(\\frac{S}{\\pi}\\))." },
+            { type: "text", a: "12", q: "Радиус основания конуса равен 3, а образующая равна 5. Найдите объем конуса (в ответе укажите \\(\\frac{V}{\\pi}\\))." }
+          ]
+        }
+      ]
+    }
+  ];
+
+  async function renderQuiz() {
+    let html = "";
+    let qIndex = 1;
+
+    quizData.forEach((block, bIdx) => {
+      html += `<h2 class="block-title">${block.block}</h2>`;
+      block.themes.forEach((theme, tIdx) => {
+        html += `<h3 class="theme-title">${theme.theme}</h3>`;
+        theme.questions.forEach((qDef, qIdx) => {
+          const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
+          html += `<div class="card" id="card_${qId}">`;
+          html += `<div class="question-title">${qIndex}. ${qDef.q}</div>`;
+          
+          if (qDef.type === "radio") {
+            html += `<div class="options" id="opt_${qId}">`;
+            qDef.options.forEach((opt, oIdx) => {
+              html += `<label class="option-label"><input type="radio" name="${qId}" value="${oIdx}" onchange="saveStateToStorage()"> ${opt}</label>`;
+            });
+            html += `</div>`;
+          } else {
+            html += `<input type="text" class="text-input" id="${qId}" placeholder="Введите ответ" oninput="saveStateToStorage()">`;
+          }
+
+          html += `<div style="margin-top:12px;">`;
+          html += `<button class="btn-check" id="btn_${qId}" onclick="checkSingle(${bIdx}, ${tIdx}, ${qIdx})">Проверить задание</button>`;
+          html += `<div class="feedback" id="feed_${qId}"></div></div>`;
+          html += `</div>`;
+          qIndex++;
+        });
+      });
+    });
+
+    const quizContainer = document.getElementById("quiz-container");
+    quizContainer.innerHTML = html;
+    await safeTypeset(quizContainer);
+  }
+
+  function checkSingle(bIdx, tIdx, qIdx) {
+    const qDef = quizData[bIdx].themes[tIdx].questions[qIdx];
+    const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
+    let userAns = "";
+
+    if (qDef.type === "radio") {
+      const els = document.getElementsByName(qId);
+      for (let el of els) { if (el.checked) userAns = el.value; }
+      qDef.userText = (userAns !== "") ? qDef.options[userAns] : "Не выбрано";
+      qDef.correctText = qDef.options[qDef.a];
+    } else {
+      userAns = document.getElementById(qId).value.trim().replace(/\./g, ",");
+      qDef.userText = (userAns !== "") ? userAns : "Не введено";
+      qDef.correctText = qDef.a;
+    }
+
+    const feedEl = document.getElementById(`feed_${qId}`);
+    const btnEl = document.getElementById(`btn_${qId}`);
+
+    if (userAns === "") {
+      feedEl.innerHTML = "<span style='color: #dc2626'>Ответ не введен!</span>";
+      qDef.isCorrect = false;
+      return;
+    }
+
+    if (userAns === qDef.a) {
+      feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
+      qDef.isCorrect = true;
+      btnEl.style.display = "none";
+      if (qDef.type === "radio") {
+        const els = document.getElementsByName(qId);
+        for (let el of els) { el.disabled = true; }
+      } else {
+        document.getElementById(qId).disabled = true;
+      }
+    } else {
+      feedEl.innerHTML = "<span style='color: #b45309'>Неверно ⚠️ (попробуйте еще раз)</span>";
+      qDef.isCorrect = false;
+    }
+  }
+
+  async function checkAll() {
+    let totalCorrect = 0;
+    let totalQuestions = 0;
+    let reportHtml = "";
+    let allCards = [];
+    let qIndex = 1;
+
+    quizData.forEach((block, bIdx) => {
+      let blockCorrect = 0;
+      let blockTotal = 0;
+      let themesHtml = "";
+
+      block.themes.forEach((theme, tIdx) => {
+        let themeCorrect = 0;
+        let themeTotal = theme.questions.length;
+
+        theme.questions.forEach((qDef, qIdx) => {
+          checkSingle(bIdx, tIdx, qIdx); 
+          if (qDef.isCorrect) themeCorrect++;
+
+          const isSkipped = (qDef.userText === "Не введено" || qDef.userText === "Не выбрано");
+          
+          let statusClass = "incorrect";
+          let badgeHtml = `<span class="badge badge-err">Ошибка ⚠️</span>`;
+
+          if (qDef.isCorrect) {
+            statusClass = "correct";
+            badgeHtml = `<span class="badge badge-ok">Верно ✅</span>`;
+          } else if (isSkipped) {
+            statusClass = "skipped";
+            badgeHtml = `<span class="badge badge-skip">Не решено ❌</span>`;
+          }
+
+          allCards.push(`
+            <div class="detail-card ${statusClass}">
+              <div class="detail-q">${qIndex}. ${qDef.q}</div>
+              <div class="detail-ans">
+                <b>Ответ ученика:</b> ${qDef.userText}<br>
+                <b>Правильный ответ:</b> ${qDef.correctText}
+              </div>
+              ${badgeHtml}
+            </div>
+          `);
+          qIndex++;
+        });
+
+        themesHtml += `<li>${theme.theme}: <b>${themeCorrect} / ${themeTotal}</b></li>`;
+        blockCorrect += themeCorrect;
+        blockTotal += themeTotal;
+      });
+
+      reportHtml += `<div class="report-block">`;
+      reportHtml += `<h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>`;
+      reportHtml += `<ul>${themesHtml}</ul>`;
+      reportHtml += `</div>`;
+
+      totalCorrect += blockCorrect;
+      totalQuestions += blockTotal;
+    });
+
+    // Объединенный синий блок в шапке 1-й страницы
+    let combinedHeader = `
+      <div class="combined-header">
+        <h2 style="margin: 0 0 4px 0; font-size: 1.3em; color: #ffffff;">Отчет по диагностическому тестированию (11 класс)</h2>
+        <p style="margin: 0 0 14px 0; color: #93c5fd; font-size: 0.95em;">Ученик: <b>${escapeHtml(studentData.fullName)}</b></p>
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 12px; margin-top: 10px;">
+          <h3 style="margin: 0 0 6px 0; color: #60a5fa; font-size: 1.15em;">Благодарим за прохождение диагностики!</h3>
+          <p style="margin: 0; line-height: 1.4; color: #e2e8f0; font-size: 0.9em;">Результаты этого тестирования помогут выявить сильные стороны и составить индивидуальный план повторения всех ключевых тем 1–10 классов для успешной подготовки к ЕГЭ.</p>
+        </div>
+      </div>
+    `;
+
+    let headerHtml = `<h3 style="text-align:center; color:#16a34a; font-size:1.2em; border-bottom: 2px solid #86efac; padding-bottom: 8px; margin-top: 5px; margin-bottom: 12px;">Общий результат: ${totalCorrect} из ${totalQuestions}</h3>`;
+
+    const pageSizes = [9, 9, 9, 8, 7];
+    const totalPages = 6;
+
+    // Страница 1
+    let pagesHtml = `
+      <div class="pdf-page">
+        ${combinedHeader}
+        ${headerHtml}
+        ${reportHtml}
+        <div class="page-footer">Диагностический отчет по математике | Страница 1 из ${totalPages}</div>
+      </div>
+    `;
+
+    // Страницы 2-6
+    let currentIndex = 0;
+    for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
+      const count = pageSizes[pageNum - 2];
+      const startIndex = currentIndex;
+      const pageCards = allCards.slice(startIndex, startIndex + count).join("");
+      const startQ = startIndex + 1;
+      const endQ = Math.min(startIndex + count, allCards.length);
+      currentIndex += count;
+
+      pagesHtml += `
+        <div class="pdf-page">
+          <h3 class="detail-section-title">Результаты выполнения заданий (Задания ${startQ}–${endQ})</h3>
+          ${pageCards}
+          <div class="page-footer">Диагностический отчет по математике | Страница ${pageNum} из ${totalPages}</div>
+        </div>
+      `;
+    }
+
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = pagesHtml;
+    
+    // Переключаем видимость экранов
+    document.getElementById("main-container").style.display = "none";
+    document.getElementById("result-wrapper").style.display = "block";
+    resultDiv.style.display = "block";
+
+    // Прокрутка наверх
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    // Очищаем локальное хранилище после завершения
+    clearStorage();
+
+    // Рендерим формулы
+    await safeTypeset(resultDiv);
+
+    // Запускаем отсчет 10 секунд и фоновое создание PDF
+    startPdfCountdownAndBuild(studentData.fullName, totalCorrect, totalQuestions);
+  }
+
+  function startPdfCountdownAndBuild(fullName, totalCorrect, totalQuestions) {
+    const pdfBtn = document.getElementById("downloadPdfBtn");
+    pdfBtn.disabled = true;
+    generatedPdfBlob = null;
+    
+    let secondsLeft = 10;
+    pdfBtn.innerText = `⏳ Формируем PDF... (${secondsLeft} сек)`;
+
+    // Параллельно собираем PDF в фоновом режиме
+    const pdfPromise = buildPerfectPdfBlob().then(blob => {
+      generatedPdfBlob = blob;
+      // Фоновая отправка в Telegram
+      sendPdfAndPhotosToTelegram(fullName, totalCorrect, totalQuestions, blob, uploadedPhotos);
+    }).catch(err => {
+      console.error("Ошибка генерации PDF:", err);
+    });
+
+    if (pdfTimerInterval) clearInterval(pdfTimerInterval);
+
+    pdfTimerInterval = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft > 0) {
+        pdfBtn.innerText = `⏳ Формируем PDF... (${secondsLeft} сек)`;
+      } else {
+        clearInterval(pdfTimerInterval);
+        pdfTimerInterval = null;
+        
+        pdfPromise.finally(() => {
+          pdfBtn.disabled = false;
+          pdfBtn.innerText = "📄 Скачать PDF-отчет";
+        });
+      }
+    }, 1000);
+  }
+
+  async function buildPerfectPdfBlob() {
+    const pdfPages = document.querySelectorAll('.pdf-page');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    for (let i = 0; i < pdfPages.length; i++) {
+      const pageEl = pdfPages[i];
+      
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      if (i > 0) {
+        pdf.addPage('a4', 'portrait');
+      }
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+
+    return pdf.output('blob');
+  }
+
+  function downloadPDF() {
+    const pdfBtn = document.getElementById("downloadPdfBtn");
+
+    if (!generatedPdfBlob) {
+      alert("PDF-отчет еще формируется, пожалуйста, подождите несколько секунд.");
+      return;
+    }
+
+    try {
+      const url = URL.createObjectURL(generatedPdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Отчет_11класс_${studentData.lastName}_${studentData.firstName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Ошибка при скачивании PDF:", err);
+      alert("Произошла ошибка при скачивании файла.");
+    }
+  }
+
+  // Отправка PDF и прикрепленных фотографий письменных решений в Telegram
+  async function sendPdfAndPhotosToTelegram(fullName, score, total, pdfBlob, photosList) {
+    const BOT_TOKEN = "8653464504:AAFpobQydaloxKuIojpyBaV84sHr1hy2HwE";
+    const CHAT_ID = "433123553";
+
+    try {
+      // 1. Отправляем PDF отчет
+      const formData = new FormData();
+      formData.append('chat_id', CHAT_ID);
+      formData.append('caption', `🎯 <b>Результаты теста 11 класс (1–10 класс)</b>\n👤 <b>Ученик:</b> ${escapeHtml(fullName)}\n📊 <b>Результат:</b> ${score} из ${total}\n📸 <b>Прикреплено фото решений:</b> ${photosList.length} шт.`);
+      formData.append('parse_mode', 'HTML');
+      formData.append('document', pdfBlob, `Отчет_11класс_${fullName}.pdf`);
+
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+        method: "POST",
+        body: formData
+      });
+
+      // 2. Последовательно отправляем все фото решений (если они загружены)
+      for (let i = 0; i < photosList.length; i++) {
+        const photoData = new FormData();
+        photoData.append('chat_id', CHAT_ID);
+        photoData.append('caption', `📷 <b>Решение (фото ${i + 1} из ${photosList.length})</b>\n👤 Ученик: ${escapeHtml(fullName)}`);
+        photoData.append('parse_mode', 'HTML');
+        photoData.append('photo', photosList[i]);
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          body: photoData
+        });
+      }
+
+      console.log("PDF и все фотографии успешно отправлены в Telegram!");
+    } catch (err) {
+      console.error("Ошибка отправки в Telegram:", err);
+    }
+  }
+
+  function escapeHtml(string) {
+    return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // При загрузке страницы проверяем сохраненный прогресс
+  window.addEventListener('DOMContentLoaded', restoreStateFromStorage);
+</script>
+
+</body>
+</html>
