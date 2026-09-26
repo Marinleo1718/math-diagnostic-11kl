@@ -767,7 +767,7 @@
     await safeTypeset(quizContainer);
   }
 
-  function checkSingle(bIdx, tIdx, qIdx) {
+  function checkSingle(bIdx, tIdx, qIdx, silent = false) {
     const qDef = quizData[bIdx].themes[tIdx].questions[qIdx];
     const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
     let userAns = "";
@@ -778,15 +778,17 @@
       qDef.userText = (userAns !== "") ? qDef.options[parseInt(userAns)] : "Не выбрано";
       qDef.correctText = qDef.options[qDef.a];
     } else {
-      userAns = document.getElementById(qId).value.trim().replace(/\./g, ",");
+      const inputEl = document.getElementById(qId);
+      userAns = inputEl ? inputEl.value.trim().replace(/\./g, ",") : "";
       qDef.userText = (userAns !== "") ? userAns : "Не введено";
       qDef.correctText = qDef.a;
     }
 
-    const feedEl = document.getElementById(`feed_${qId}`);
-
     if (userAns === "") {
-      feedEl.innerHTML = "<span style='color: #dc2626'>Ответ не введен!</span>";
+      if (!silent) {
+        const feedEl = document.getElementById(`feed_${qId}`);
+        if (feedEl) feedEl.innerHTML = "<span style='color: #dc2626'>Ответ не введен!</span>";
+      }
       qDef.isCorrect = false;
       return;
     }
@@ -794,24 +796,28 @@
     const isRight = (qDef.type === "radio") ? (parseInt(userAns) === qDef.a) : (userAns === qDef.a);
 
     if (isRight) {
-      feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
       qDef.isCorrect = true;
+      if (!silent) {
+        const feedEl = document.getElementById(`feed_${qId}`);
+        if (feedEl) feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
 
-      // Блокируем дальнейший ввод и скрываем кнопку проверки
-      if (qDef.type === "radio") {
-        const els = document.getElementsByName(qId);
-        els.forEach(el => el.disabled = true);
-      } else {
-        const inputEl = document.getElementById(qId);
-        if (inputEl) inputEl.disabled = true;
+        if (qDef.type === "radio") {
+          const els = document.getElementsByName(qId);
+          els.forEach(el => el.disabled = true);
+        } else {
+          const inputEl = document.getElementById(qId);
+          if (inputEl) inputEl.disabled = true;
+        }
+
+        const btnEl = document.getElementById(`btn_${qId}`);
+        if (btnEl) btnEl.style.display = "none";
       }
-
-      const btnEl = document.getElementById(`btn_${qId}`);
-      if (btnEl) btnEl.style.display = "none";
-
     } else {
-      feedEl.innerHTML = "<span style='color: #dc2626'>Неверно ❌</span>";
       qDef.isCorrect = false;
+      if (!silent) {
+        const feedEl = document.getElementById(`feed_${qId}`);
+        if (feedEl) feedEl.innerHTML = "<span style='color: #dc2626'>Неверно ❌</span>";
+      }
     }
   }
 
@@ -881,7 +887,7 @@
         let themeTotal = theme.questions.length;
 
         theme.questions.forEach((qDef, qIdx) => {
-          checkSingle(bIdx, tIdx, qIdx); 
+          checkSingle(bIdx, tIdx, qIdx, true); 
           if (qDef.isCorrect) themeCorrect++;
 
           const isSkipped = (qDef.userText === "Не введено" || qDef.userText === "Не выбрано");
