@@ -78,6 +78,7 @@
     .option-label span { flex: 1; word-break: break-word; }
 
     .text-input { width: 100%; max-width: 350px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1em; margin-top: 10px; box-sizing: border-box; }
+    .text-input:disabled { background-color: #e2e8f0; cursor: not-allowed; color: #475569; }
     
     .btn-check { background: var(--primary-blue); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 12px; transition: 0.2s; }
     .btn-check:hover { background: #1d4ed8; }
@@ -221,6 +222,9 @@
     }
     .pdf-main-header h2 { margin: 0 0 6px 0; font-size: 1.25em; color: #ffffff; font-weight: 700; }
     .pdf-main-header .student-subtitle { margin: 0 0 12px 0; color: #93c5fd; font-size: 0.95em; }
+    .pdf-main-header hr { border: none; border-top: 1px solid rgba(255,255,255,0.18); margin: 10px 0; }
+    .pdf-main-header h3 { margin: 0 0 6px 0; color: #60a5fa; font-size: 1.05em; font-weight: 700; }
+    .pdf-main-header p.desc { margin: 0; line-height: 1.35; color: #e2e8f0; font-size: 0.82em; }
 
     .pdf-total-result {
       text-align: center;
@@ -251,6 +255,38 @@
     .pdf-block-ul li {
       margin-bottom: 1px;
     }
+
+    .detail-section-title { margin-top: 0; margin-bottom: 10px; color: var(--primary-dark); border-bottom: 2px solid var(--primary-blue); padding-bottom: 5px; font-size: 1.05em; }
+
+    .pdf-card {
+      background: #ffffff;
+      border-left: 4px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 3px 8px;
+      margin-bottom: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      position: relative;
+    }
+    .pdf-card.correct { border-left-color: #16a34a; background: #f0fdf4; }
+    .pdf-card.incorrect { border-left-color: #d97706; background: #fffbeb; }
+    .pdf-card.skipped { border-left-color: #dc2626; background: #fef2f2; }
+
+    .pdf-q { font-weight: 600; margin-bottom: 2px; color: #1e293b; font-size: 0.82em; line-height: 1.25; }
+    .pdf-ans { font-size: 0.78em; color: #475569; line-height: 1.28; padding-right: 85px; }
+    
+    .badge {
+      position: absolute;
+      bottom: 5px;
+      right: 8px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .badge-err { background: #fef3c7; color: #b45309; }
+    .badge-skip { background: #fee2e2; color: #b91c1c; }
 
     .page-footer {
       position: absolute;
@@ -300,7 +336,7 @@
       
       <input type="file" id="solutionPhotosInput" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload(event)">
       <button type="button" class="btn-photo-upload" onclick="document.getElementById('solutionPhotosInput').click()">
-        ➕ Прикрепить решения
+        ➕ Прикрепить фото или файлы решений
       </button>
 
       <div class="photo-preview-grid" id="photoPreviewGrid"></div>
@@ -719,243 +755,93 @@
 
           html += `<div style="margin-top:12px;">`;
           html += `<button class="btn-check" id="btn_${qId}" onclick="checkSingle(${bIdx}, ${tIdx}, ${qIdx})">Проверить задание</button>`;
-          html += `<div class="feedback" id="fee_${qId}"></div>`;
-          html += `</div>`;
+          html += `<div class="feedback" id="feed_${qId}"></div></div>`;
           html += `</div>`;
           qIndex++;
         });
       });
     });
 
-    document.getElementById("quiz-container").innerHTML = html;
-    await safeTypeset(document.getElementById("quiz-container"));
+    const quizContainer = document.getElementById("quiz-container");
+    quizContainer.innerHTML = html;
+    await safeTypeset(quizContainer);
   }
 
   function checkSingle(bIdx, tIdx, qIdx) {
     const qDef = quizData[bIdx].themes[tIdx].questions[qIdx];
     const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
-    const feeEl = document.getElementById(`fee_${qId}`);
-    const btnEl = document.getElementById(`btn_${qId}`);
-
     let userAns = "";
+
     if (qDef.type === "radio") {
-      const checked = document.querySelector(`input[name="${qId}"]:checked`);
-      if (checked) userAns = checked.value;
+      const els = document.getElementsByName(qId);
+      for (let el of els) { if (el.checked) userAns = el.value; }
+      qDef.userText = (userAns !== "") ? qDef.options[parseInt(userAns)] : "Не выбрано";
+      qDef.correctText = qDef.options[qDef.a];
     } else {
-      const input = document.getElementById(qId);
-      if (input) userAns = input.value.trim();
+      userAns = document.getElementById(qId).value.trim().replace(/\./g, ",");
+      qDef.userText = (userAns !== "") ? userAns : "Не введено";
+      qDef.correctText = qDef.a;
     }
 
+    const feedEl = document.getElementById(`feed_${qId}`);
+
     if (userAns === "") {
-      feeEl.style.color = "#d97706";
-      feeEl.innerText = "Введите ответ";
+      feedEl.innerHTML = "<span style='color: #dc2626'>Ответ не введен!</span>";
+      qDef.isCorrect = false;
       return;
     }
 
-    let isCorrect = false;
-    if (qDef.type === "radio") {
-      isCorrect = (parseInt(userAns, 10) === qDef.a);
-    } else {
-      const normUser = userAns.replace(/\s+/g, '').replace('.', ',');
-      const normAns = String(qDef.a).trim().replace(/\s+/g, '').replace('.', ',');
-      isCorrect = (normUser === normAns);
-    }
+    const isRight = (qDef.type === "radio") ? (parseInt(userAns) === qDef.a) : (userAns === qDef.a);
 
-    if (isCorrect) {
-      feeEl.style.color = "#16a34a";
-      feeEl.innerText = "✓ Верно!";
-      
-      // Скрываем кнопку проверки
-      if (btnEl) btnEl.style.display = "none";
-      
-      // Блокируем ввод или выбор нового ответа
+    if (isRight) {
+      feedEl.innerHTML = "<span style='color: #16a34a'>Верно! ✅</span>";
+      qDef.isCorrect = true;
+
+      // Блокируем дальнейший ввод и скрываем кнопку проверки
       if (qDef.type === "radio") {
-        document.querySelectorAll(`input[name="${qId}"]`).forEach(r => r.disabled = true);
+        const els = document.getElementsByName(qId);
+        els.forEach(el => el.disabled = true);
       } else {
-        const input = document.getElementById(qId);
-        if (input) input.disabled = true;
+        const inputEl = document.getElementById(qId);
+        if (inputEl) inputEl.disabled = true;
       }
+
+      const btnEl = document.getElementById(`btn_${qId}`);
+      if (btnEl) btnEl.style.display = "none";
+
     } else {
-      feeEl.style.color = "#dc2626";
-      feeEl.innerText = "✗ Неверно";
+      feedEl.innerHTML = "<span style='color: #dc2626'>Неверно ❌</span>";
+      qDef.isCorrect = false;
     }
-
-    saveStateToStorage();
   }
 
-  async function checkAll() {
-    let totalQuestions = 0;
-    let correctQuestions = 0;
-    let resultsHtml = "";
-    let pdfHtml = "";
-
-    resultsHtml += `<div class="screen-header-card">`;
-    resultsHtml += `<h2>Результаты диагностики: ${escapeHtml(studentData.fullName)}</h2>`;
-    resultsHtml += `<p>Тест по математике (11 класс)</p>`;
+  async function buildPerfectPdfBlob() {
+    const { jsPDF } = window.jspdf;
+    const pdfContainer = document.getElementById("result-pdf");
+    const pages = pdfContainer.querySelectorAll(".pdf-page");
     
-    let qNum = 1;
-    let blockSummaries = [];
-
-    quizData.forEach((block, bIdx) => {
-      let blockTotal = 0;
-      let blockCorrect = 0;
-      let blockDetails = [];
-
-      block.themes.forEach((theme, tIdx) => {
-        theme.questions.forEach((qDef, qIdx) => {
-          totalQuestions++;
-          blockTotal++;
-          const qId = `q_${bIdx}_${tIdx}_${qIdx}`;
-          
-          let userAns = "";
-          let userDisplayAns = "—";
-
-          if (qDef.type === "radio") {
-            const checked = document.querySelector(`input[name="${qId}"]:checked`);
-            if (checked) {
-              userAns = checked.value;
-              userDisplayAns = qDef.options[checked.value];
-            }
-          } else {
-            const input = document.getElementById(qId);
-            if (input && input.value.trim() !== "") {
-              userAns = input.value.trim();
-              userDisplayAns = userAns;
-            }
-          }
-
-          let status = "skipped";
-          if (userAns !== "") {
-            let isCorrect = false;
-            if (qDef.type === "radio") {
-              isCorrect = (parseInt(userAns, 10) === qDef.a);
-            } else {
-              const normUser = userAns.replace(/\s+/g, '').replace('.', ',');
-              const normAns = String(qDef.a).trim().replace(/\s+/g, '').replace('.', ',');
-              isCorrect = (normUser === normAns);
-            }
-
-            if (isCorrect) {
-              status = "correct";
-              correctQuestions++;
-              blockCorrect++;
-            } else {
-              status = "incorrect";
-            }
-          }
-
-          blockDetails.push({
-            num: qNum,
-            question: qDef.q,
-            userAns: userDisplayAns,
-            correctAns: (qDef.type === "radio") ? qDef.options[qDef.a] : qDef.a,
-            status: status
-          });
-
-          qNum++;
-        });
-      });
-
-      blockSummaries.push({
-        title: block.block,
-        correct: blockCorrect,
-        total: blockTotal,
-        details: blockDetails
-      });
+    const pdf = new jsPDF({
+      orientation: "p",
+      unit: "mm",
+      format: "a4",
+      compress: true
     });
 
-    resultsHtml += `<div class="screen-score-badge">Итоговый результат: ${correctQuestions} из ${totalQuestions}</div>`;
-    resultsHtml += `</div>`;
-
-    resultsHtml += `<h3 class="screen-section-title">Сводка по блокам</h3>`;
-    blockSummaries.forEach(b => {
-      resultsHtml += `<div class="screen-summary-block">`;
-      resultsHtml += `<h4>${b.title} (${b.correct}/${b.total})</h4>`;
-      resultsHtml += `<ul>`;
-      b.details.forEach(d => {
-        let stText = d.status === "correct" ? "Верно" : (d.status === "incorrect" ? "Неверно" : "Пропущено");
-        resultsHtml += `<li>Задание ${d.num}: ${stText} (Ваш ответ: ${escapeHtml(d.userAns)})</li>`;
-      });
-      resultsHtml += `</ul></div>`;
-    });
-
-    resultsHtml += `<h3 class="screen-section-title">Детальные результаты</h3>`;
-    blockSummaries.forEach(b => {
-      b.details.forEach(d => {
-        resultsHtml += `<div class="screen-card ${d.status}">`;
-        resultsHtml += `<div class="screen-q">${d.num}. ${d.question}</div>`;
-        resultsHtml += `<div class="screen-ans"><strong>Ваш ответ:</strong> ${escapeHtml(d.userAns)}</div>`;
-        if (d.status !== "correct") {
-          resultsHtml += `<div class="screen-ans"><strong>Правильный ответ:</strong> ${d.correctAns}</div>`;
-        }
-        resultsHtml += `</div>`;
-      });
-    });
-
-    document.getElementById("main-container").style.display = "none";
-    document.getElementById("result-wrapper").style.display = "block";
-    document.getElementById("result-screen").innerHTML = resultsHtml;
-    await safeTypeset(document.getElementById("result-screen"));
-
-    pdfHtml += `<div class="pdf-page">`;
-    pdfHtml += `<div class="pdf-main-header">`;
-    pdfHtml += `<h2>Диагностический тест по математике (11 класс)</h2>`;
-    pdfHtml += `<div class="student-subtitle">Ученик: ${escapeHtml(studentData.fullName)}</div>`;
-    pdfHtml += `</div>`;
-    pdfHtml += `<div class="pdf-total-result">Результат: ${correctQuestions} из ${totalQuestions} баллов</div>`;
-
-    blockSummaries.forEach(b => {
-      pdfHtml += `<div class="pdf-block-item">`;
-      pdfHtml += `<div class="pdf-block-title-text">${b.title} (${b.correct}/${b.total})</div>`;
-      pdfHtml += `<ul class="pdf-block-ul">`;
-      b.details.forEach(d => {
-        let stText = d.status === "correct" ? "Верно" : (d.status === "incorrect" ? "Неверно" : "Пропущено");
-        pdfHtml += `<li>Задание ${d.num}: ${stText} (Ваш ответ: ${escapeHtml(d.userAns)})</li>`;
-      });
-      pdfHtml += `</ul></div>`;
-    });
-
-    pdfHtml += `<div class="page-footer">Страница 1 из 1 — Диагностика 11 класс</div>`;
-    pdfHtml += `</div>`;
-
-    document.getElementById("result-pdf").innerHTML = pdfHtml;
-    await safeTypeset(document.getElementById("result-pdf"));
-
-    clearStorage();
-    generatePdfAndSendTelegram(correctQuestions, totalQuestions);
-  }
-
-  async function generatePdfAndSendTelegram(score, total) {
-    const btn = document.getElementById("downloadPdfBtn");
-    btn.disabled = true;
-    btn.innerText = "⏳ Формирование PDF...";
-
-    try {
-      const { jsPDF } = window.jspdf;
-      const pdfContainer = document.getElementById("result-pdf");
+    for (let i = 0; i < pages.length; i++) {
+      if (i > 0) pdf.addPage();
       
-      const canvas = await html2canvas(pdfContainer, {
+      const canvas = await html2canvas(pages[i], {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        windowWidth: 794
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-      generatedPdfBlob = pdf.output("blob");
-
-      btn.disabled = false;
-      btn.innerText = "📥 Скачать PDF результат";
-
-      sendToTelegram(score, total);
-    } catch (e) {
-      console.error("Ошибка создания PDF:", e);
-      btn.innerText = "❌ Ошибка PDF";
+      pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
     }
+
+    return pdf.output("blob");
   }
 
   function downloadPDF() {
@@ -963,49 +849,249 @@
     const url = URL.createObjectURL(generatedPdfBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Результаты_${studentData.lastName}_${studentData.firstName}.pdf`;
+    a.download = `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
-  async function sendToTelegram(score, total) {
+  async function checkAll() {
+    const downloadBtn = document.getElementById("downloadPdfBtn");
+    downloadBtn.disabled = true;
+    downloadBtn.innerText = "⏳ Формирование PDF...";
+
+    let totalCorrect = 0;
+    let totalQuestions = 0;
+    
+    let summaryListHtml = "";
+    let pdfSummaryBlocksHtml = "";
+    let screenCardsHtml = "";
+    let pdfCardsArray = [];
+    
+    let qIndex = 1;
+
+    quizData.forEach((block, bIdx) => {
+      let blockCorrect = 0;
+      let blockTotal = 0;
+      let themesHtml = "";
+
+      block.themes.forEach((theme, tIdx) => {
+        let themeCorrect = 0;
+        let themeTotal = theme.questions.length;
+
+        theme.questions.forEach((qDef, qIdx) => {
+          checkSingle(bIdx, tIdx, qIdx); 
+          if (qDef.isCorrect) themeCorrect++;
+
+          const isSkipped = (qDef.userText === "Не введено" || qDef.userText === "Не выбрано");
+          
+          let statusClass = "incorrect";
+          let badgeStatus = "Ошибка ⚠️";
+          let badgeClass = "badge-err";
+
+          if (qDef.isCorrect) {
+            statusClass = "correct";
+            badgeStatus = "Верно ✅";
+            badgeClass = "badge-ok";
+          } else if (isSkipped) {
+            statusClass = "skipped";
+            badgeStatus = "Не решено ❌";
+            badgeClass = "badge-skip";
+          }
+
+          screenCardsHtml += `
+            <div class="screen-card ${statusClass}">
+              <div class="screen-q">${qIndex}. ${qDef.q}</div>
+              <div class="screen-ans">
+                <b>Ответ ученика:</b> ${qDef.userText}<br>
+                <b>Правильный ответ:</b> ${qDef.correctText}
+              </div>
+              <div><span class="badge ${badgeClass}" style="position:static;">${badgeStatus}</span></div>
+            </div>
+          `;
+
+          pdfCardsArray.push(`
+            <div class="pdf-card ${statusClass}">
+              <div class="pdf-q">${qIndex}. ${qDef.q}</div>
+              <div class="pdf-ans">
+                <b>Ответ ученика:</b> ${qDef.userText}<br>
+                <b>Правильный ответ:</b> ${qDef.correctText}
+              </div>
+              <span class="badge ${badgeClass}">${badgeStatus}</span>
+            </div>
+          `);
+
+          qIndex++;
+        });
+
+        themesHtml += `<li>${theme.theme}: <b>${themeCorrect} / ${themeTotal}</b></li>`;
+        blockCorrect += themeCorrect;
+        blockTotal += themeTotal;
+      });
+
+      summaryListHtml += `
+        <div class="screen-summary-block">
+          <h4>${block.block} (${blockCorrect} из ${blockTotal})</h4>
+          <ul>${themesHtml}</ul>
+        </div>
+      `;
+
+      pdfSummaryBlocksHtml += `
+        <div class="pdf-block-item">
+          <div class="pdf-block-title-text">${block.block} (${blockCorrect} из ${blockTotal})</div>
+          <ul class="pdf-block-ul">${themesHtml}</ul>
+        </div>
+      `;
+
+      totalCorrect += blockCorrect;
+      totalQuestions += blockTotal;
+    });
+
+    const percent = Math.round((totalCorrect / totalQuestions) * 100);
+
+    const screenResultHtml = `
+      <div class="screen-header-card">
+        <h2>Отчет по тестированию</h2>
+        <p>Ученик: <b>${escapeHtml(studentData.fullName)}</b></p>
+        <div class="screen-score-badge">Результат: ${totalCorrect} из ${totalQuestions} (${percent}%)</div>
+      </div>
+      <h3 class="screen-section-title">Сводка по блокам знаний</h3>
+      ${summaryListHtml}
+      <h3 class="screen-section-title">Детализация ответов</h3>
+      ${screenCardsHtml}
+    `;
+
+    document.getElementById("result-screen").innerHTML = screenResultHtml;
+
+    const pageSizes = [15, 14, 13];
+    const totalPages = 1 + pageSizes.length;
+
+    let pagesHtml = `
+      <div class="pdf-page">
+        <div class="pdf-main-header">
+          <h2>Отчет по диагностическому тестированию (11 класс)</h2>
+          <div class="student-subtitle">Ученик: <b>${escapeHtml(studentData.fullName)}</b></div>
+          <hr>
+          <h3>Благодарим за прохождение диагностики!</h3>
+          <p class="desc">Результаты этого тестирования помогут выявить сильные стороны и составить индивидуальный план повторения всех ключевых тем 1–10 классов для успешной подготовки к ЕГЭ.</p>
+        </div>
+
+        <div class="pdf-total-result">
+          Общий результат: ${totalCorrect} из ${totalQuestions}
+        </div>
+
+        <div>
+          ${pdfSummaryBlocksHtml}
+        </div>
+
+        <div class="page-footer">Диагностический отчет | Страница 1 из ${totalPages}</div>
+      </div>
+    `;
+
+    let cardIndex = 0;
+    pageSizes.forEach((size, p) => {
+      const pageNum = p + 2;
+      const pageCards = pdfCardsArray.slice(cardIndex, cardIndex + size).join("");
+      const startQ = cardIndex + 1;
+      const endQ = Math.min(cardIndex + size, pdfCardsArray.length);
+      cardIndex += size;
+
+      pagesHtml += `
+        <div class="pdf-page">
+          <h3 class="detail-section-title">Результаты выполнения заданий (Задания ${startQ}–${endQ})</h3>
+          ${pageCards}
+          <div class="page-footer">Диагностический отчет | Страница ${pageNum} из ${totalPages}</div>
+        </div>
+      `;
+    });
+
+    const resultPdfContainer = document.getElementById("result-pdf");
+    resultPdfContainer.innerHTML = pagesHtml;
+
+    document.getElementById("main-container").style.display = "none";
+    document.getElementById("result-wrapper").style.display = "block";
+
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await safeTypeset(document.getElementById("result-screen"));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await safeTypeset(resultPdfContainer);
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
-      const caption = `📊 *Новый результат теста!*\n👤 *Ученик:* ${studentData.fullName}\n🎯 *Результат:* ${score} из ${total}\n📷 *Прикреплено фото:* ${uploadedPhotos.length} шт.`;
+      generatedPdfBlob = await buildPerfectPdfBlob();
+      downloadBtn.disabled = false;
+      downloadBtn.innerText = "📄 Скачать PDF-отчет";
 
-      if (generatedPdfBlob) {
-        const formData = new FormData();
-        formData.append("chat_id", CHAT_ID);
-        formData.append("caption", caption);
-        formData.append("parse_mode", "Markdown");
-        formData.append("document", generatedPdfBlob, `Результат_${studentData.lastName}_${studentData.firstName}.pdf`);
+      sendToTelegram(studentData.fullName, totalCorrect, totalQuestions, generatedPdfBlob);
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-          method: "POST",
-          body: formData
-        });
-      }
-
-      for (let i = 0; i < uploadedPhotos.length; i++) {
-        const photoData = new FormData();
-        photoData.append("chat_id", CHAT_ID);
-        photoData.append("caption", `📷 Решение (${i + 1}/${uploadedPhotos.length}) от ${studentData.fullName}`);
-        photoData.append("photo", uploadedPhotos[i]);
-
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          body: photoData
-        });
-      }
     } catch (err) {
-      console.error("Ошибка отправки в Telegram:", err);
+      console.error("Ошибка при генерации PDF:", err);
+      downloadBtn.innerText = "⚠️ Ошибка генерации PDF";
     }
   }
 
-  window.onload = function() {
-    restoreStateFromStorage();
-  };
+  async function sendToTelegram(fullName, correct, total, pdfBlob) {
+    if (!BOT_TOKEN || BOT_TOKEN === 'ВАШ_ТОКЕН_БОТА') return;
+
+    try {
+      if (pdfBlob) {
+        const pdfData = new FormData();
+        pdfData.append('chat_id', CHAT_ID);
+        pdfData.append('caption', `📊 Результат теста: ${fullName}\nНабрано баллов: ${correct} из ${total}`);
+        pdfData.append('document', pdfBlob, `Отчет_${studentData.lastName}_${studentData.firstName}.pdf`);
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+          method: 'POST',
+          body: pdfData
+        });
+      }
+
+      if (uploadedPhotos && uploadedPhotos.length > 0) {
+        if (uploadedPhotos.length === 1) {
+          const singleData = new FormData();
+          singleData.append('chat_id', CHAT_ID);
+          singleData.append('photo', uploadedPhotos[0]);
+          singleData.append('caption', `📷 Черновик ученика: ${fullName}`);
+
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: singleData
+          });
+        } else {
+          const mediaGroupData = new FormData();
+          mediaGroupData.append('chat_id', CHAT_ID);
+
+          const mediaArray = [];
+          uploadedPhotos.forEach((file, i) => {
+            const attachName = `photo_${i}`;
+            mediaGroupData.append(attachName, file);
+            mediaArray.push({
+              type: 'photo',
+              media: `attach://${attachName}`,
+              caption: i === 0 ? `📷 Черновики решения: ${fullName} (${uploadedPhotos.length} фото)` : ''
+            });
+          });
+
+          mediaGroupData.append('media', JSON.stringify(mediaArray));
+
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+            method: 'POST',
+            body: mediaGroupData
+          });
+        }
+      }
+      clearStorage();
+    } catch(e) {
+      console.error("Ошибка при отправке в Telegram:", e);
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', restoreStateFromStorage);
 </script>
 </body>
 </html>
